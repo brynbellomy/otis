@@ -977,6 +977,7 @@ Docker.prototype.copySharedResources = function(){
     );
   });
 
+  var bryntax = fs.readFileSync(path.join(path.dirname(__filename),'..', 'bryntax.css'));
   fs.readFile(path.join(path.dirname(__filename),'..','res','css', self.colourScheme + '.css'), function(err, file){
     exec('pygmentize -S ' + self.colourScheme + ' -f html -a "body .highlight"', function(code, stdout, stderr){
       if(code || stderr !== ''){
@@ -985,7 +986,7 @@ Docker.prototype.copySharedResources = function(){
       }
       self.writeFileIfDifferent(
         path.join(self.outDir, 'doc-style.css'),
-        file.toString() + stdout,
+        file.toString() + stdout + bryntax.toString(),
         'Copied ' + self.colourScheme + '.css to doc-style.css',
         done
       );

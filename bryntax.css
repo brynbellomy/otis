@@ -1,0 +1,59 @@
+.k, .kwd, .kr,
+.type, .kt {
+  color: #E59 !important;
+}
+
+.constant, .no {
+  color: #3AA !important;
+}
+
+.c, .cm, .c1, .com, .comment {
+  /* color: #FB0 !important; */
+  color: #4DAA4F !important;
+}
+
+.s, .str, .string {
+  color: #E42 !important;
+  /* color: #C41A15 !important; */
+}
+
+.function, .nf {
+  color: #FB0 !important;
+}
+
+.o, .operator {
+  color: white !important;
+}
+
+.cp, .preprocessor {
+  color: #E3BA81 !important;
+}
+
+.nv {
+  color: white !important;
+}
+
+.nl {
+  color: #aaaaff !important;
+}
+
+.nc {
+  color: #4EA4EE !important;
+}
+
+.in {
+  color: #AAF !important;
+}
+
+body .highlight {
+  background-color: #444 !important;
+  color: white !important;
+}
+
+pre, tt, code {
+  font-size: 14px !important;
+}
+
+#headings .h3 {
+  font-size: 0.9em !important;
+}
