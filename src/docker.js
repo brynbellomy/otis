@@ -597,8 +597,14 @@ Docker.prototype.languages = {
     comment: '#' // Nor (really) does perl.
   },
   c: {
-    extensions: [ 'c', 'h' ],
+    extensions: [ 'c' ],
     executables: [ 'gcc' ],
+    comment: '//', multiLine: [ /\/\*/, /\*\// ]
+  },
+  objc: {
+    extensions: [ 'm', 'h' ],
+    executables: [ 'clang', 'gcc' ],
+    dox: true,
     comment: '//', multiLine: [ /\/\*/, /\*\// ]
   },
   cpp: {
@@ -703,7 +709,7 @@ Docker.prototype.highlight = function(sections, language, cb){
   // Run our input through pygments, then split the output back up into its constituent sections
   this.pygments(input, language, function(out){
     out = out.replace(/^\s*<div class="highlight"><pre>/,'').replace(/<\/pre><\/div>\s*$/,'');
-    var bits = out.split(new RegExp('\\n*<span class="c1?">' + params.comment + '----\\{DIVIDER_THING\\}----<\\/span>\\n*'));
+    var bits = out.split(new RegExp('\\n*<span class="c[1p]?">' + params.comment + '----\\{DIVIDER_THING\\}----<\\/span>\\n*'));
     for(var i = 0; i < sections.length; i += 1){
       sections[i].codeHtml = '<div class="highlight"><pre>' + bits[i] + '</pre></div>';
       sections[i].docHtml = showdown.makeHtml(sections[i].docs);
