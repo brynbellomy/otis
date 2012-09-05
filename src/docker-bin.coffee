@@ -2,7 +2,6 @@
 
 # Require all node modules
 path     = require "path"
-program  = require "commander"
 watchr   = require "watchr"
 fs       = require "fs"
 
@@ -29,23 +28,23 @@ localJSConfig = (
     {}
 )
 
+console.log localJSConfig
 
 # All program arguments using commander
-program
-  .version("0.1.5")
-  .option("-i, --inDir [dir]", "Input directory (defaults to current dir)",                     localJSConfig.inDir          ? pwd)
-  .option("-o, --outDir [dir]", "Output directory (defaults to ./doc)",                         localJSConfig.outDir         ? path.join(pwd, "doc"))
-  .option("-t, --tplDir [dir]", "Directory containing dox.<ext>, code.<ext>, and tmpl.<ext>",   localJSConfig.tplDir         ? path.join(__dirname, "..", "res"))
-  .option("-e, --tplEngine [x]", "Template parser (see github.com/visionmedia/consolidate.js)", localJSConfig.tplEngine      ? "internal")
-  .option("-n, --tplExtension [ext]", "Template file extension ",                               localJSConfig.tplExtension   ? "jst")
-  .option("-m, --markdownEngine [gfm | marked]", "Only two choices, cowboy.",                   localJSConfig.markdownEngine ? "marked")
-  .option("-u, --onlyUpdated", "Only process files that have been changed",                     localJSConfig.onlyUpdated)
-  .option("-c, --colourScheme [style]", "Colour scheme to use (as in pygmentize -L styles)",    localJSConfig.colourScheme)
-  .option("-w, --watch", "Watch on the input directory for file changes (experimental)",        localJSConfig.watch)
-  .option("-I, --ignoreHidden", "Ignore hidden files and directories (starting with . or _)",   localJSConfig.ignoreHidden)
-  .option("-s, --sidebarState [state]", "Whether the sidebar should be open or not by default", localJSConfig.sidebarState   ? "yes")
-  .option("-x, --exclude [pattern]", "Paths to exclude",                                        localJSConfig.exclude        ? false)
-  .parse(process.argv)
+argv = require("optimist")
+  .alias("i", "inDir")         .describe("i", "Input directory (defaults to current dir)")                   .default("i", localJSConfig.inDir ? pwd)
+  .alias("o", "outDir")        .describe("o", "Output directory (defaults to ./doc)")                        .default("o", localJSConfig.outDir ? path.join(pwd, "doc"))
+  .alias("t", "tplDir")        .describe("t", "Directory containing dox.<ext>, code.<ext>, and tmpl.<ext>")  .default("t", localJSConfig.tplDir ? path.join(__dirname, "..", "res"))
+  .alias("e", "tplEngine")     .describe("e", "Template parser (see github.com/visionmedia/consolidate.js)") .default("e", localJSConfig.tplEngine ? "internal")
+  .alias("n", "tplExtension")  .describe("n", "Template file extension ")                                    .default("n", localJSConfig.tplExtension ? "jst")
+  .alias("m", "markdownEngine").describe("m", "Only two choices, cowboy.")                                   .default("m", localJSConfig.markdownEngine ? "marked")
+  .alias("u", "onlyUpdated")   .describe("u", "Only process files that have been changed")                   .default("u", localJSConfig.onlyUpdated)
+  .alias("c", "colourScheme")  .describe("c", "Colour scheme to use (as in pygmentize -L styles)")           .default("c", localJSConfig.colourScheme)
+  .alias("w", "watch")         .describe("w", "Watch on the input directory for file changes (experimental)").default("w", localJSConfig.watch)
+  .alias("I", "ignoreHidden")  .describe("I", "Ignore hidden files and directories (starting with . or _)")  .default("I", localJSConfig.ignoreHidden)
+  .alias("s", "sidebarState")  .describe("s", "Whether the sidebar should be open or not by default")        .default("s", localJSConfig.sidebarState ? "yes")
+  .alias("x", "exclude")       .describe("x", "Paths to exclude")                                            .default("x", localJSConfig.exclude ? false)
+  .argv
 
 # Super-simple function to test if an argument is vaguely trueish or falseish.
 # Should match `true`, `false`, `0`, `1`, `'0'`, `'1'`, `'y'`, `'n'`, `'yes'`, `'no'`, `'ok'`, `'true'`, `'false'`
@@ -74,7 +73,7 @@ fields = [
 console.log "Options:".white.bold
 opts = {}
 for field in fields
-  opts[field] = program[field]
+  opts[field] = argv[field]
   console.log field.red + ": ".white + (opts[field] ? "-").grey
 
 
@@ -82,12 +81,10 @@ for field in fields
 d = new Docker opts
 
 # If no file list is specified, just run on whole directory
-if program.args.length is 0
-  program.args = [ "./" ]
+if argv._.length is 0
+  argv._ = [ "./" ]
 
 # Set it running.
-if program.watch
-  d.watch program.args
-else
-  d.doc program.args
+if argv.watch then d.watch argv._
+else               d.doc argv._
 

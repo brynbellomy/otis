@@ -5,7 +5,7 @@
   "dependencies": {
     "mkdirp": "0.3.2",
     "dox": "0.3.1",
-    "commander": "0.5.2",
+    "optimist": "0.3.x",
     "watchr": "2.0.3",
     "consolidate": "0.4.x",
     "github-flavored-markdown": "1.0.x",
