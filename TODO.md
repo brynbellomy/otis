@@ -7,4 +7,6 @@
 	- explain what you can put under `~/.docker`
 - rename `~/.docker`
 - make money get paid
+- rename the module and get a proper package.json going
+  - make sure new package.json points ta github.com/brynbellomy/dox version of dox
 
