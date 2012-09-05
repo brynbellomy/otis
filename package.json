@@ -1,12 +1,15 @@
 {
-  "author": "JT <jt@gosquared.com>",
+  "author": "bryn austin bellomy <bryn.bellomy@gmail.com>",
   "name": "docker",
   "version": "0.1.5",
   "dependencies": {
     "mkdirp": "0.3.2",
     "dox": "0.3.1",
     "commander": "0.5.2",
-    "watchr": "2.0.3"
+    "watchr": "2.0.3",
+    "consolidate": "0.4.x",
+    "github-flavored-markdown": "1.0.x",
+    "marked": "0.2.x"
   },
   "bin": {
     "docker": "./docker"
@@ -14,14 +17,14 @@
   "engines": {
     "node": ">=0.4.0"
   },
-  "description": "Static documentation generator based on docco",
-  "homepage": "http://jbt.github.com/docker",
+  "description": "Documentation generator based on docco",
+  "homepage": "http://github.com/brynbellomy/docker",
   "repository": {
     "type": "git",
-    "url": "git://github.com/jbt/docker.git"
+    "url": "git://github.com/brynbellomy/docker.git"
   },
   "scripts": {
     "install": "node scripts/install.js"
   },
-  "main": "./src/docker.js"
+  "main": "./lib/docker.js"
 }
