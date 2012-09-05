@@ -48,8 +48,6 @@ path          = require "path"
 watchr        = require "watchr"
 mkdirp        = require "mkdirp"
 consolidate   = require "consolidate"
-marked        = require "marked"
-gfm           = require "github-flavored-markdown"
 
 ###
 ## Docker Constructor
@@ -102,10 +100,6 @@ class exports.Docker
     @colourScheme   = opts.colourScheme
     @ignoreHidden   = !!opts.ignoreHidden
     @sidebarState   = opts.sidebarState
-
-    switch @markdownEngine
-      when "gfm"
-        @renderMarkdown
     
     # Generate an exclude regex for the given pattern
     if typeof opts.exclude is "string"
@@ -115,6 +109,20 @@ class exports.Docker
     
     # Oh go on then. Allow American-Enligsh spelling of colour if used programmatically
     if opts.colorScheme? then opts.colourScheme = opts.colorScheme
+
+    # setup the markdown renderer fn
+    switch @markdownEngine
+      when "gfm"
+        @_renderMarkdown = require("github-flavored-markdown").parse
+      when "showdown"
+        @_renderMarkdown = require("#{__dirname}/../res/showdown").Showdown.makeHtml
+      when "marked"
+        @_renderMarkdown = require "marked"
+        @_renderMarkdown.setOptions {
+          gfm: false
+          pedantic: false
+          sanitize: false
+        }
     
 
   doc: (files) =>
@@ -399,8 +407,8 @@ class exports.Docker
   parseSections: (data, language) =>
     
     # Fetch language-specific parameters for this code file
-    md = (a, stripParas) ->
-      h = gfm.parse(a.replace(/(^\s*|\s*$)/, ""))
+    md = (a, stripParas) =>
+      h = @_renderMarkdown a.replace /(^\s*|\s*$)/, ""
       return (if stripParas then h.replace(/<\/?p>/g, "") else h)
 
     codeLines = data.split("\n")
@@ -709,14 +717,14 @@ class exports.Docker
     input = input.join("\n" + params.comment + "----{DIVIDER_THING}----\n")
     
     # Run our input through pygments, then split the output back up into its constituent sections
-    @pygments input, language, (out) ->
+    @pygments input, language, (out) =>
       out = out.replace(/^\s*<div class="highlight"><pre>/, "").replace(/<\/pre><\/div>\s*$/, "")
       bits = out.split(new RegExp("\\n*<span class=\"c[1p]?\">" + params.comment + "----\\{DIVIDER_THING\\}----<\\/span>\\n*"))
       i = 0
 
-      while i < sections.length
-        sections[i].codeHtml = "<div class=\"highlight\"><pre>" + bits[i] + "</pre></div>"
-        sections[i].docHtml = gfm.parse sections[i].docs
+      for section, i in sections
+        section.codeHtml = "<div class=\"highlight\"><pre>" + bits[i] + "</pre></div>"
+        section.docHtml = @_renderMarkdown section.docs
         i += 1
       self.processDocCodeBlocks sections, cb
 
@@ -933,24 +941,9 @@ class exports.Docker
   @param {function} cb Callback function to fire when we're done
   ###
   renderMarkdownHtml: (content, filename, cb) =>
-    
-    @_renderMarkdown ?= (
-      switch @markdownEngine
-        when "gfm" then require("github-flavored-markdown").parse
-        # when "marked"
-        else
-          marked = require "marked"
-          marked.setOptions(
-            gfm:      false
-            pedantic: false
-            sanitize: false
-            # highlight: (code, lang) =>
-              # @pygments code, lang, cb
-          )
-    )
 
     # Run the markdown through *showdown*
-    content = gfm.parse(content)
+    content = @_renderMarkdown content
     
     # Add anchors to all headings
     
