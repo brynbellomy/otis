@@ -1,4 +1,37 @@
-# Docker
+# // doc-tracy
+
+terrible name, great documentation.
+
+supported languages: ostensibly, uh... javascript, coffeescript, c, c++, objective-c, java,
+and gaelic.  i think.
+
+# how sick is this, bro?
+
+*real sick*.  check it:
+
+- **syntax highlighting:** pygments.
+- **templating:** [visionmedia/consolidate.js](http://github.com/visionmedia/consolidate.js),
+  which means just about every template engine ever is supported.
+	- [jade](http://github.com/visionmedia/jade) templates are provided out of the box.  that's
+	  right.  so sick you just threw up.
+- **markdown engine:** either [github-flavored-markdown](http://github.com/isaacs/github-flavored-markdown)
+  or [marked](https://github.com/chjj/marked).
+- **per-project config flat files:** uses node.js's native module `require` architecture to store
+  settings per-project for generating documentation.  that way you can just type `docker` in the
+  project root -- nothing more.  finally, you'll be able to get that frontal lobotomy without
+  inconveniencing your coworkers -- you've earned it!
+- **a cakefile task:** i figured it would be charitable to help the feeble.  `cake doc` all day,
+  worm.
+- **it documents Objective-C code:** why?  because i hate you.  sigh, kidding ... -- why?  because
+  that's my godawful day job.  **doc-tracy** will also help you document 1) tearing the wings off
+  of angels, 2) grinding little puppies into big mac meat patties, etc.
+
+
+
+
+
+
+# everything below this line is definitely mad outdated ---->
 
 A documentation generator built on the foundations of [Docco](http://jashkenas.github.com/docco/) and [Docco-Husky](https://github.com/mbrevoort/docco-husky).
 
