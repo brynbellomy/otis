@@ -22,25 +22,54 @@ argv = require("optimist").argv
 if argv?._[0] is "use" and argv?._[1]? and argv._[1].toString().trim().length > 0    # being a little overcautious here, i know
   configToUse = argv._[1].toString().trim()
 
-# Check for local config file
+# Check for various local config file and load then in order of least-specific to most-specific
 configFilenames = []
-configFilenames.push path.join(pwd, "docker.config.#{configToUse}.js") if configToUse?
-configFilenames.push path.join(pwd, "docker.config.js")
-configFilenames.push path.join(process.env.HOME, ".docker")
+if configToUse?
+  homeCfg = path.join process.env.HOME, ".docker", "docker.config.#{configToUse}.js"
+  pwdCfg  = path.join pwd, "docker.config.#{configToUse}.js"
+  if not (fs.existsSync(homeCfg) or fs.existsSync(pwdCfg))
+    console.log "Config #{configToUse} could not be found in ./ or ~/"
+    process.exit()
+  else
+    configFilenames.push path.join(process.env.HOME, ".docker", "docker.config.js")
+    configFilenames.push homeCfg
+    configFilenames.push pwdCfg
+else
+  configFilenames.push path.join(process.env.HOME, ".docker", "docker.config.js")
+  configFilenames.push path.join(pwd, "docker.config.js")
 
 localJSConfig = {}
 for filename in configFilenames
   try
-    localJSConfig = require filename
+    _localJSConfig = require filename
     console.log "Using config file '#{filename}'."
-    break
+    localJSConfig[key] = val for key, val of _localJSConfig when _localJSConfig.hasOwnProperty(key)
   catch err
     continue
 
-console.log localJSConfig
-
 # All program arguments using commander
-argv = require("optimist")
+optimist = require("optimist")
+  .usage("""
+
+    ===============================================================================
+    DOCKER
+    Usage: $0 [use <config>] [options] [files to document]
+
+    When 'use <config>' is present, docker will attempt to load config files in the
+    following order:
+        #{"~/.docker/docker.config.js".red}
+        #{"~/.docker/docker.config.<config>.js".red}
+        #{"./docker.config.<config>.js".red}
+        ... and will bail with an error if neither of the latter two could be found.
+
+    When there is no 'use <config>' argument specified, docker will use this order
+    instead:
+        #{"~/.docker/docker.config.js".red}
+        #{"./docker.config.js".red}
+
+    #{"~/.docker/".red} is also a great place to store your custom templates, etc. as well.
+    """)
+  .alias("U", "use")           
   .alias("i", "inDir")         .describe("i", "Input directory (defaults to current dir)")                   .default("i", localJSConfig.inDir ? pwd)
   .alias("o", "outDir")        .describe("o", "Output directory (defaults to ./doc)")                        .default("o", localJSConfig.outDir ? path.join(pwd, "doc"))
   .alias("t", "tplDir")        .describe("t", "Directory containing dox.<ext>, code.<ext>, and tmpl.<ext>")  .default("t", localJSConfig.tplDir ? path.join(__dirname, "..", "res"))
@@ -48,21 +77,28 @@ argv = require("optimist")
   .alias("n", "tplExtension")  .describe("n", "Template file extension ")                                    .default("n", localJSConfig.tplExtension ? "jst")
   .alias("m", "markdownEngine").describe("m", "Only two choices, cowboy.")                                   .default("m", localJSConfig.markdownEngine ? "marked")
   .alias("u", "onlyUpdated")   .describe("u", "Only process files that have been changed")                   .default("u", localJSConfig.onlyUpdated)
-  .alias("c", "colourScheme")  .describe("c", "Colour scheme to use (as in pygmentize -L styles)")           .default("c", localJSConfig.colourScheme)
-  .alias("w", "watch")         .describe("w", "Watch on the input directory for file changes (experimental)").default("w", localJSConfig.watch)
-  .alias("I", "ignoreHidden")  .describe("I", "Ignore hidden files and directories (starting with . or _)")  .default("I", localJSConfig.ignoreHidden)
-  .alias("s", "sidebarState")  .describe("s", "Whether the sidebar should be open or not by default")        .default("s", localJSConfig.sidebarState ? "yes")
+  .alias("c", "colourScheme")  .describe("c", "Color scheme to use (as in pygmentize -L styles)")            .default("c", localJSConfig.colourScheme)
+  .alias("y", "css")           .describe("y", "CSS file to include after pygments CSS (you can specify this flag multiple times)").default("y", localJSConfig.css ? [])
+  .alias("T", "tolerant")      .describe("T", "Will parse comments without a leading ! (ex: \"/**! ...\")")  .default("T", localJSConfig.tolerant ? false).boolean("T")
+  .alias("w", "watch")         .describe("w", "Watch on the input directory for file changes (experimental)").default("w", localJSConfig.watch).boolean("w")
+  .alias("I", "ignoreHidden")  .describe("I", "Ignore hidden files and directories (starting with . or _)")  .default("I", localJSConfig.ignoreHidden).boolean("I")
+  .alias("s", "sidebarState")  .describe("s", "Whether the sidebar should be open or not by default")        .default("s", localJSConfig.sidebarState ? "yes").boolean("s")
   .alias("x", "exclude")       .describe("x", "Paths to exclude")                                            .default("x", localJSConfig.exclude ? false)
-  .argv
+  .alias("W", "writeConfig")   .describe("W", "Write 'docker.config.js' in PWD using the options provided.") .default("W", false).boolean("W")
+  .alias("h", "help")          .describe("h", "Show this help text.").default("h", false).boolean("h")
+  #.wrap(80) # 80-col output
 
-# Super-simple function to test if an argument is vaguely trueish or falseish.
-# Should match `true`, `false`, `0`, `1`, `'0'`, `'1'`, `'y'`, `'n'`, `'yes'`, `'no'`, `'ok'`, `'true'`, `'false'`
-booleanish = (input) ->
-  return input  if input is true or input is false
-  return !!+input  if typeof input is "number" or (+input + "" is input + "")
-  input = input.toString()
-  (if input is "" then true else /(y(es)?|ok|t(rue)?)/i.test(input))
+argv = optimist.argv
 
+# show help and exit if the help flag was given or no input files were given
+if argv.help or argv._.length <= 0
+  optimist.showHelp()
+  process.exit()
+
+# make sure css arg is an array
+if argv.css not instanceof Array
+  argv.css = [ argv.css ]
+  argv.y   = [ argv.y ]
 
 # Put all the options into an object
 fields = [
@@ -74,6 +110,8 @@ fields = [
   "markdownEngine",
   "onlyUpdated",
   "colourScheme",
+  "css",
+  "tolerant",
   "ignoreHidden",
   "sidebarState",
   "exclude"
@@ -81,10 +119,18 @@ fields = [
 
 console.log "Options:".white.bold
 opts = {}
-for field in fields
+for field in fields when typeof argv[field] isnt undefined
   opts[field] = argv[field]
-  console.log field.red + ": ".white + (opts[field] ? "-").grey
+  console.log field.red + ": ".white + (opts[field] ? "-").toString().grey
 
+# write a docker.config.js file if the writeConfig option was specified
+if argv?.writeConfig is yes
+  require("fs").writeFileSync(
+    path.join(pwd, "docker.config.js"),
+    """
+    module.exports = #{require('util').inspect(opts)};
+    """,
+    "utf8")
 
 # Create docker instance
 d = new Docker opts
@@ -101,11 +147,11 @@ if args.length > 0
       i++
   args = newArgv
 
-# If no file list is specified, just run on whole directory
-if args.length <= 0
-  args = [ "./" ]
 
 # Set it running.
 if argv.watch then d.watch args
 else               d.doc   args
+
+
+
 

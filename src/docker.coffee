@@ -1,43 +1,47 @@
-# # docker.js
-# ### _A simple documentation generator based on [docco](http://jashkenas.github.com/docco/)_
-# **Docker** is a really simple documentation generator, which originally started out as a
-# pure-javascript port of **docco**, but which eventually gained many extra little features
-# which somewhat break docco's philosophy of being a quick-and-dirty thing.
-#
-# Docker source-code can be found on [GitHub](https://github.com/jbt/docker)
-#
-# Take a look at the [original docco project](http://jashkenas.github.com/docco/) to get a feel
-# for the sort of functionality this provides. In short: **Markdown**-based displaying of code comments
-# next to syntax-highlighted code. This page is the result of running docker against itself.
-#
-# The command-line usage of docker is somewhat more useful than that of docco. To use, simply run
-#
-# ```sh
-# ./docker -i path/to/code -o path/to/docs [a_file.js a_dir]
-# ```
-#
-# Docker will then recurse into the code root directory (or alternatively just the files
-# and directories you specify) and document-ize all the files it can.
-# The folder structure will be preserved in the document root.
-#
-# More detailed usage instructions and examples can be found in the [README](../README.md.html)
-#
-# ## Differences from docco
-# The main differences from docco are:
-#
-#  - **jsDoc support**: support for **jsDoc**-style code comments, which
-# is provided by way of [Dox](https://github.com/visionmedia/dox). You can see some examples of
-# the sort of output you get below.
-#
-#  - **Folder Tree** and **Heading Navigation**: collapsible sidebar with folder tree and jump-to
-# heading links for easy navigation between many files and within long files.
-#
-#  - **Markdown File Support**: support for plain markdown files, like the [README](../README.md.html) for this project.
-#
-#  - **Colour Schemes**: support for multiple output colour schemes
-#
-#
-# So let's get started!
+###!
+# docker.js
+
+_A simple documentation generator based on [docco](http://jashkenas.github.com/docco/)_
+**Docker** is a really simple documentation generator, which originally started out as a
+pure-javascript port of **docco**, but which eventually gained many extra little features
+which somewhat break docco's philosophy of being a quick-and-dirty thing.
+
+Docker source-code can be found on [GitHub](https://github.com/jbt/docker)
+
+Take a look at the [original docco project](http://jashkenas.github.com/docco/) to get a feel
+for the sort of functionality this provides. In short: **Markdown**-based displaying of code comments
+next to syntax-highlighted code. This page is the result of running docker against itself.
+
+The command-line usage of docker is somewhat more useful than that of docco. To use, simply run
+
+```sh
+./docker -i path/to/code -o path/to/docs [a_file.js a_dir]
+```
+
+Docker will then recurse into the code root directory (or alternatively just the files
+and directories you specify) and document-ize all the files it can.
+The folder structure will be preserved in the document root.
+
+More detailed usage instructions and examples can be found in the [README](../README.md.html)
+
+## Differences from docco
+
+The main differences from docco are
+
+ - **jsDoc support**: support for **jsDoc**-style code comments, which
+is provided by way of [Dox](https://github.com/visionmedia/dox). You can see some examples of
+the sort of output you get below.
+
+ - **Folder Tree** and **Heading Navigation**: collapsible sidebar with folder tree and jump-to
+heading links for easy navigation between many files and within long files.
+
+ - **Markdown File Support**: support for plain markdown files, like the [README](../README.md.html) for this project.
+
+ - **Colour Schemes**: support for multiple output colour schemes
+
+
+So let's get started!
+###
 
 # ## Node Modules
 # Include all the necessay node modules.
@@ -49,16 +53,33 @@ watchr        = require "watchr"
 mkdirp        = require "mkdirp"
 consolidate   = require "consolidate"
 
-###
-## Docker Constructor
-
-Creates a new docker instance. All methods are called on one instance of this object.
-
-Input arguments are an object containing any of the keys `inDir`, `outDir`, `tplDir`, `onlyUpdated`, `colourScheme`, `ignoreHidden`, `sidebarState`, `exclude`
-###
 
 class exports.Docker
 
+  ###!
+  ## Docker()
+
+  Creates a new docker instance. All methods are called on one instance of this object.
+
+  Input arguments are an object containing any of the keys
+
+  - `inDir`
+  - `outDir`
+  - `tplDir`,
+  - `tplEngine`
+  - `tplExtension`
+  - `markdownEngine`
+  - `colourScheme`
+  - `css`
+  - `tolerant`
+  - `onlyUpdated`
+  - `ignoreHidden`
+  - `sidebarState`
+  - `exclude`
+
+  @constructor
+  @param {object} opts
+  ###
   constructor: (opts) ->
     @parseOpts opts
     @running = false
@@ -75,9 +96,10 @@ class exports.Docker
       tplEngine: "internal"
       tplExtension: "jst"
       markdownEngine: "marked"
-
-      onlyUpdated: false
       colourScheme: "default"
+      css: []
+      tolerant: false
+      onlyUpdated: false
       ignoreHidden: false
       sidebarState: true
       exclude: false
@@ -98,6 +120,8 @@ class exports.Docker
     @markdownEngine = opts.markdownEngine
     @onlyUpdated    = !!opts.onlyUpdated
     @colourScheme   = opts.colourScheme
+    @css            = opts.css
+    @tolerant       = !!opts.tolerant
     @ignoreHidden   = !!opts.ignoreHidden
     @sidebarState   = opts.sidebarState
     
@@ -123,16 +147,25 @@ class exports.Docker
           pedantic: false
           sanitize: false
         }
-    
+      else
+        @_renderMarkdown = (data) -> data  # pass-through
 
+
+  ###!
+  ## doc
+
+  Generates documentation for specified files.
+
+  @param {Array} files Array of file paths relative to the `inDir` to generate documentation for.
+  ###
   doc: (files) =>
     @running = true
     [].push.apply @scanQueue, files
     @addNextFile()
 
 
-  ###
-  ## Docker.prototype.watch
+  ###!
+  ## watch
 
   Watches the input directory for file changes and updates docs whenever a file is updated
 
@@ -162,12 +195,13 @@ class exports.Docker
     return @doc(files)
 
 
-  ###
-  ## Docker.prototype.finished
+  ###!
+  ## finished
 
   Callback function fired when processing is finished.
   ###
-  finished: =>
+  finished: (err) =>
+    if err then console.error err.toString().red
     @running = false
 
     if @watching
@@ -178,8 +212,8 @@ class exports.Docker
       console.log "Done."
 
 
-  ###
-  ## Docker.prototype.clean
+  ###!
+  ## clean
 
   Clears out any instance variables so this docker can be rerun
   ###
@@ -189,8 +223,8 @@ class exports.Docker
     @tree = {}
 
 
-  ###
-  ## Docker.prototype.addNextFile
+  ###!
+  ## addNextFile
 
   Process the next file on the scan queue. If it's a directory, list all the children and queue those.
   If it's a file, add it to the queue.
@@ -235,8 +269,8 @@ class exports.Docker
       return @processNextFile()
 
 
-  ###
-  ## Docker.prototype.queueFile
+  ###!
+  ## queueFile
 
   Queues a file for processing, and additionally stores it in the folder tree
 
@@ -246,8 +280,8 @@ class exports.Docker
     @files.push filename
 
 
-  ###
-  ## Docker.prototype.addFileToFree
+  ###!
+  ## addFileToFree
 
   Adds a file to the file tree to show in the sidebar. This used to be in `queueFile` but
   since we're now only deciding whether or not the file can be included at the point of
@@ -290,8 +324,8 @@ class exports.Docker
     currDir.files.push bits[bits.length - 1]
 
 
-  ###
-  ## Docker.prototype.processNextFile
+  ###!
+  ## processNextFile
 
   Take the next file off the queue and process it
   ###
@@ -303,8 +337,8 @@ class exports.Docker
       @copySharedResources()
 
 
-  ###
-  ## Docker.prototype.generateDoc
+  ###!
+  ## generateDoc
 
   _This is where the magic happens_
 
@@ -339,8 +373,8 @@ class exports.Docker
       )
     )
 
-  ###
-  ## Docker.prototype.decideWhetherToProcess
+  ###!
+  ## decideWhetherToProcess
 
   Decide whether or not a file should be processed. If the `onlyUpdated`
   flag was set on initialization, only allow processing of files that
@@ -364,8 +398,8 @@ class exports.Docker
     @fileIsNewer filename, outFile, callback
 
 
-  ###
-  ## Docker.prototype.fileIsNewer
+  ###!
+  ## fileIsNewer
 
   Sees whether one file is newer than another
 
@@ -386,8 +420,8 @@ class exports.Docker
 
 
 
-  ###
-  ## Docker.prototype.parseSections
+  ###!
+  ## parseSections
 
   Parse the content of a file into individual sections.
   A section is defined to be one block of code with an accompanying comment
@@ -428,7 +462,6 @@ class exports.Docker
     # i = 0
 
     async = require "async"
-
     async.forEachSeries codeLines, (line, forEachCb) =>
     # for line in codeLines
       
@@ -446,7 +479,7 @@ class exports.Docker
             # of the multiline comment, and pass it through **dox**, which will then
             # extract any **jsDoc** parameters that are present.
             inMultiLineComment = false
-            if params.dox
+            if params.dox 
               multiLine += line
               try
                 
@@ -455,7 +488,9 @@ class exports.Docker
                 
                 # standardize the comment block delimiters to the only ones that
                 # dox seems to understand, namely, /* and */
-                multiLine = multiLine.replace(params.multiLine[0], "/**").replace(params.multiLine[1], "*/").replace(/\n (?:[^\*])/g, "\n * ")
+                multiLine = multiLine.replace(params.multiLine[0], "").replace(params.multiLine[1], "").replace(/\n (?:[^\*])/g, "\n * ")
+                if multiLine.charAt(0) is "!" then multiLine = multiLine.slice 1 # remove our strict-mode comment marker
+                multiLine = "/**#{multiLine}*/"
                 doxData = dox.parseComments(multiLine,
                   raw: true
                 )[0]
@@ -468,7 +503,7 @@ class exports.Docker
                   forEachCb()
 
               catch e
-                console.log "Dox error: " + e
+                console.error "Dox error: " + e
                 multiLine += line.replace(params.multiLine[1], "") + "\n"
                 section.docs += "\n" + multiLine.replace(params.multiLine[0], "") + "\n"
             else
@@ -486,7 +521,7 @@ class exports.Docker
         # ```js
         #  alert('foo'); // Alert some foo /* Random open comment thing
         # ```
-        else if matchable.match(params.multiLine[0]) and not matchable.replace(params.multiLine[0], "").match(params.multiLine[1]) and not matchable.split(params.multiLine[0])[0].match(commentRegex)
+        else if (@tolerant is yes or matchable.replace(/\s*/, "").replace(params.multiLine[0], "").charAt(0) is "!") and matchable.match(params.multiLine[0]) and not matchable.replace(params.multiLine[0], "").match(params.multiLine[1]) and not matchable.split(params.multiLine[0])[0].match(commentRegex)
           # Here we start parsing a multiline comment. Store away the current section and start a new one
           if section.code
             if not section.code.match(/^\s*$/) or not section.docs.match(/^\s*$/)
@@ -502,7 +537,7 @@ class exports.Docker
 
           return forEachCb()
 
-      if matchable.match(commentRegex) and (not params.commentsIgnore or not matchable.match(params.commentsIgnore)) and not matchable.match(/#!/)
+      if matchable.match(commentRegex) and (not params.commentsIgnore or not matchable.match(params.commentsIgnore)) and not matchable.match(/#!/) and (@tolerant is yes or matchable.replace(commentRegex, "").charAt(0) is "!")
         # This is for single-line comments. Again, store away the last section and start a new one
         if section.code
           if not section.code.match(/^\s*$/) or not section.docs.match(/^\s*$/) then sections.push(section)
@@ -512,7 +547,9 @@ class exports.Docker
             code: ""
           }
 
-        section.docs += line.replace(commentRegex, "") + "\n"
+        line = line.replace(commentRegex, "")
+        if line.charAt(0) is "!" then line = line.slice 1 # remove ! from beginning of comment if we're running in strict mode
+        section.docs += line + "\n"
 
       else
         if not params.commentsIgnore or not line.match(params.commentsIgnore) then section.code += line + "\n"
@@ -523,8 +560,8 @@ class exports.Docker
     sections
 
 
-  ###
-  ## Docker.prototype.languageParams
+  ###!
+  ## languageParams
 
   Provides language-specific params for a given file name.
 
@@ -557,15 +594,16 @@ class exports.Docker
     false
 
 
-  # The language params can have the following keys:
-  #
-  #  * `name`: Name of Pygments lexer to use
-  #  * `comment`: String flag for single-line comments
-  #  * `multiline`: Two-element array of start and end flags for block comments
-  #  * `commentsIgnore`: Regex of comments to strip completely (don't even doc)
-  #  * `dox`: Whether to run block comments through Dox (only JavaScript)
-  #  * `type`: Either `'code'` (default) or `'markdown'` - format of page to render
-  #
+  ###!
+  The language params can have the following keys:
+  
+  + `name`: Name of Pygments lexer to use
+  + `comment`: String flag for single-line comments
+  + `multiline`: Two-element array of start and end flags for block comments
+  + `commentsIgnore`: Regex of comments to strip completely (don't even doc)
+  + `dox`: Whether to run block comments through Dox
+  + `type`: Either `'code'` (default) or `'markdown'` - format of page to render
+  ###
   languages:
     javascript:
       extensions: ["js"]
@@ -579,7 +617,8 @@ class exports.Docker
       extensions: ["coffee"]
       executables: ["coffee"]
       comment: "#"
-      multiLine: [/^#{3}\s*$/m, /^#{3}\s*$/m]
+      multiLine: [/^\s*###/, /###\s*$/]
+      # multiLine: [/^###\s*!?\s*$/m, /^###\s*$/m]
       dox: true
 
     ruby:
@@ -654,8 +693,8 @@ class exports.Docker
       type: "markdown"
 
 
-  ###
-  ## Docker.prototype.pygments
+  ###!
+  ## pygments
 
   Runs a given block of code through pygments
 
@@ -693,8 +732,8 @@ class exports.Docker
       pyg.stdin.end()
 
 
-  ###
-  ## Docker.prototype.highlight
+  ###!
+  ## highlight
 
   Highlights all the sections of a file using **pygments**
   Given an array of section objects, loop through them, and for each
@@ -730,8 +769,8 @@ class exports.Docker
 
 
 
-  ###
-  ## Docker.prototype.processDocCodeBlocks
+  ###!
+  ## processDocCodeBlocks
 
   Goes through all the HTML generated from comments, finds any code blocks
   and highlights them
@@ -762,8 +801,8 @@ class exports.Docker
     next()
 
 
-  ###
-  ## Docker.prototype.extractDocCode
+  ###!
+  ## extractDocCode
 
   Extract and highlight code blocks in formatted HTML output from showdown
 
@@ -795,8 +834,8 @@ class exports.Docker
     return @highlighExtractedCode(html, codeBlocks, cb)
 
 
-  ###
-  ## Docker.prototype.highlightExtractedCode
+  ###!
+  ## highlightExtractedCode
 
   Loops through all extracted code blocks and feeds them through pygments
   for code highlighting. Unfortunately the only way to do this that's able
@@ -831,8 +870,8 @@ class exports.Docker
     next()
 
 
-  ###
-  ## Docker.prototype.addAnchors
+  ###!
+  ## addAnchors
 
   Automatically assign an id to each section based on any headings.
 
@@ -859,8 +898,8 @@ class exports.Docker
     return docHtml
 
 
-  ###
-  ## Docker.prototype.renderCodeHtml
+  ###!
+  ## renderCodeHtml
 
   Given an array of sections, render them all out to a nice HTML file
 
@@ -890,13 +929,6 @@ class exports.Docker
       section.docHtml = @addAnchors(section.docHtml, i, headings)
       i++
     
-    # Render the html file using our template
-    # content = @codeFileTemplate({
-    #   title: path.basename(filename)
-    #   sections: sections
-    # })
-
-
     @render "code", { title: path.basename(filename), sections: sections }, (err, renderedCode) =>
       if err then throw err
 
@@ -915,24 +947,8 @@ class exports.Docker
         @writeFile outFile, rendered, "Generated: #{outFile.replace(@outDir, '')}", cb
 
 
-
-    # html = @renderTemplate({
-    #   title: path.basename(filename)
-    #   relativeDir: relDir
-    #   content: content
-    #   headings: headings
-    #   sidebar: @sidebarState
-    #   colourScheme: @colourScheme
-    #   filename: filename.replace(@inDir, "").replace(/^[\/\\]/, "")
-    # })
-
-    # Recursively create the output directory, clean out any old version of the
-    # output file, then save our new file.
-    # @writeFile(outFile, html, "Generated: " + outFile.replace(self.outDir, ""), cb)
-
-
-  ###
-  ## Docker.prototype.renderMarkdownHtml
+  ###!
+  ## renderMarkdownHtml
 
   Renders the output for a Markdown file into HTML
 
@@ -959,7 +975,7 @@ class exports.Docker
     
     # Recursively create the output directory, clean out any old version of the
     # output file, then save our new file.
-    @extractDocCode(content, (content) ->
+    @extractDocCode(content, (content) =>
       headings = []
       content = "<div class=\"docs markdown\">#{ @addAnchors(content, 0, headings) }</div>"
       outFile = @outFile(filename)
@@ -982,37 +998,47 @@ class exports.Docker
       @render "tmpl", locals, (err, rendered) =>
         @writeFile outFile, rendered, "Generated: " + outFile.replace(@outDir, ""), cb
 
-    ).bind(this)
+    ) #.bind(this)
 
 
-  ###
-  ## Docker.prototype.copySharedResources
+  ###!
+  ## copySharedResources
 
   Copies the shared CSS and JS files to the output directories
   ###
   copySharedResources: =>
-    toDo = 3
-    done = => if not --toDo then return @finished()
 
-    path_script_js           = path.join path.dirname(__filename), "..", "res", "script.js"
-    path_bryntax_css         = path.join path.dirname(__filename), "..", "res", "css", "bryntax.css"
-    path_colorscheme_css     = path.join path.dirname(__filename), "..", "res", "css", "#{@colourScheme}.css"
-    path_out_doc_script_js   = path.join @outDir, "doc-script.js"
-    path_out_doc_style_css   = path.join @outDir, "doc-style.css"
-    path_out_doc_filelist_js = path.join @outDir, "doc-filelist.js"
+    inPath_scriptJS       = path.join path.dirname(__filename), "..", "res", "script.js"
+    inPath_colorSchemeCSS = path.join path.dirname(__filename), "..", "res", "css", "#{@colourScheme}.css"
+    outPath_docScriptJS   = path.join @outDir, "doc-script.js"
+    outPath_filelistJS    = path.join @outDir, "doc-filelist.js"
+    outPath_CSS           = path.join @outDir, "doc-style.css"
 
-    fs.readFile path_script_js, (err, file) => @writeFileIfDifferent path_out_doc_script_js, file, "Copied JS to doc-script.js", done
-    fs.readFile path_colorscheme_css, (err, file) =>
-      exec "pygmentize -S #{@colourScheme} -f html -a 'body .highlight'", (code, stdout, stderr) =>
-        if code or stderr isnt ""
-          console.error "Error generating CSS: \n" + stderr
-          process.exit()
+    log = (msg, cb) =>
+      console.log msg
+      cb null
 
-        bryntax = fs.readFileSync path_bryntax_css
-        @writeFileIfDifferent path_out_doc_style_css, "#{ file.toString() }#{ stdout }#{ bryntax.toString() }", "Copied #{@colourScheme}.css to doc-style.css", done
+    async = require "async"
+    async.auto {
+      readScriptJS:       (cb, results) => fs.readFile inPath_scriptJS, cb
+      readColorschemeCSS: (cb, results) => fs.readFile inPath_colorSchemeCSS, cb
+      genPygmentsCSS:     (cb, results) => exec "pygmentize -S #{@colourScheme} -f html -a 'body .highlight'", (code, stdout, stderr) => cb stderr, stdout
+      readUserCSS:        (cb, results) => async.map @css, ((file, mapCb) => fs.readFile(path.resolve(file), mapCb)), cb
 
-    @writeFileIfDifferent path_out_doc_filelist_js, "var tree=" + JSON.stringify(@tree) + ";", "Saved file tree to doc-filelist.js", done
+      writeFilelistJS:    (cb, results) =>
+        @writeFileIfDifferent outPath_filelistJS, "var tree=#{ JSON.stringify @tree };", => log "Saved file tree to doc-filelist.js", => cb null
 
+      writeScriptJS:      [ "readScriptJS",
+        (cb, results) => @writeFileIfDifferent outPath_docScriptJS, results.readScriptJS, => log "Copied JS to doc-script.js", => cb null ]
+
+      concatCSS:          [ "readColorschemeCSS", "genPygmentsCSS", "readUserCSS",
+        (cb, results) => cb null, results.readColorschemeCSS.toString() + results.genPygmentsCSS.toString() + results.readUserCSS.join "\n" ]
+
+      writeAllCSS:        [ "concatCSS"
+        (cb, results) => @writeFileIfDifferent outPath_CSS, results.concatCSS, => log "Copied all CSS to doc-style.css", => cb null ]
+
+
+    }, @finished
 
 
   outFile: (filename) =>
@@ -1037,34 +1063,6 @@ class exports.Docker
                   str.replace(/[\r\t]/g, " ").replace(/(>)\s*\n+(\s*<)/g, "$1\n$2").replace(/(?=<%[^=][^%]*)%>\s*\n*\s*<%(?=[^=])/g, "").replace(/%>\s*(?=\n)/g, "%>").replace(/(?=\n)\s*<%/g, "<%").replace(/\n/g, "~K").replace(/~K(?=[^%]*%>)/g, " ").replace(/~K/g, "\\n").replace(/'(?=[^%]*%>)/g, "\t").split("'").join("\\'").split("\t").join("'").replace(/<%=(.+?)%>/g, "',$1,'").split("<%").join("');").split("%>").join("p.push('") +
                   "');}return p.join('');")
 
-
-  xrenderTemplate: (obj) =>
-    # If we haven't already loaded the template, load it now.
-    # It's a bit messy to be using readFileSync I know, but this
-    # is the easiest way for now.
-    if not @__tmpl
-      tmplFile = path.join @tplDir, "tmpl.jst"
-      @__tmpl = @compileTemplate fs.readFileSync(tmplFile).toString()
-
-    @__tmpl obj
-
-
-  xcodeFileTemplate: (obj) =>
-    if not @__codeTmpl
-      tmplFile = path.join path.dirname(__filename), "..", "res", "code.jst"
-      @__codeTmpl = @compileTemplate fs.readFileSync(tmplFile).toString()
-
-    @__codeTmpl obj
-
-
-  xdoxTemplate: (obj) =>
-    if not @__doxtmpl
-      tmplFile = path.join(path.dirname(__filename), "..", "res", "dox.jst")
-      @__doxtmpl = @compileTemplate fs.readFileSync(tmplFile).toString()
-
-    @__doxtmpl obj
-
-
   writeFile: (filename, fileContent, doneLog, doneCallback) ->
     outDir = path.dirname filename
     mkdirp outDir, () ->
@@ -1074,17 +1072,13 @@ class exports.Docker
           if doneCallback then doneCallback()
 
 
-  writeFileIfDifferent: (filename, fileContent, doneLog, doneCallback) ->
+  writeFileIfDifferent: (filename, fileContent, callback) ->
     outDir = path.dirname(filename)
     fs.readFile filename, (err, content) ->
-      if not err and content.toString() is fileContent.toString()
-        if doneCallback? then doneCallback()
-      else
-        mkdirp outDir, () ->
-          fs.unlink filename, () ->
-            fs.writeFile filename, fileContent, () ->
-              if doneLog then console.log doneLog
-              if doneCallback then doneCallback()
+      # file exists and hasn't changed
+      if not err and content.toString() is fileContent.toString() then callback?()
+      # file has changed
+      else mkdirp outDir, -> fs.unlink filename, -> fs.writeFile filename, fileContent, callback
 
 
 

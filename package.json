@@ -9,7 +9,9 @@
     "watchr": "2.0.3",
     "consolidate": "0.4.x",
     "github-flavored-markdown": "1.0.x",
-    "marked": "0.2.x"
+    "marked": "0.2.x",
+    "async": "0.1.x",
+    "colors": "0.6.x"
   },
   "bin": {
     "docker": "./docker"
