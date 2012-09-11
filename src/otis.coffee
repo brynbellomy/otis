@@ -7,13 +7,13 @@ A highly customizable, extremely simple documentation generator based on
 - [mbrevoort / **docco-husky**](https://github.com/mbrevoort/docco-husky)
 - [jbt / **docker**](http://jbt.github.com/docker)
 
-**otis** was once a really simple documentation generator -- **docker**.  **docker** originally
+__otis__ was once a really simple documentation generator -- **docker**.  **docker** originally
 started out as a pure-javascript port of **docco**, but eventually gained many extra little features
 that somewhat break docco's philosophy of being a quick-and-dirty thing.
 
-**docker** was based on **docco**'s coffeescript source, but converted to javascript.
+__docker__ was based on **docco**'s coffeescript source, but converted to javascript.
 
-**otis** is based on **docker**, but has been re-converted to coffeescript.
+__otis__ is based on **docker**, but has been re-converted to coffeescript.
 
 especially given that some of the conversion was made using the fantastic (but not infallible)
 (http://js2coffee.org), you might notice some strange code artifacts here and there -- javascript-isms
@@ -261,7 +261,7 @@ class exports.Otis
 
 
   ###!
-  ## addFileToFree
+  ## addFileToTree
 
   Adds a file to the file tree to show in the sidebar. This used to be in `queueFile` but
   since we're now only deciding whether or not the file can be included at the point of

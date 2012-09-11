@@ -228,7 +228,7 @@ arrangeBuildDirAndChmod = (cb) ->
   walker = walk.walk "./#{ SRC_DIR }"
 
   walker.on "file", (root, fileStats, next) =>
-    js_oldname  = path.join "./", root, fileStats.name 
+    js_oldname = (path.join "./", root, fileStats.name).replace /.coffee$/, ".js"
 
     if /\.coffee$/i.test fileStats.name
       coffee_fullpath = path.join root, fileStats.name
@@ -249,7 +249,7 @@ arrangeBuildDirAndChmod = (cb) ->
           # remove the .js ending, also remove -bin prefix if it's found
           js_newpath = js_newpath.replace(/-bin\.js$/, "").replace(/\.js$/, "")
           log_subphase 1, "#{js_oldname} ".blue.bold + "//".white.bold + " assuming executable (found shebang line).".blue.bold
-          log_subphase 2, "-".white.bold + " compiling...".blue.bold
+          #log_subphase 2, "-".white.bold + " compiling...".blue.bold
           log_subphase 2, "-".white.bold + " moving to #{js_newpath.bold}".blue.bold
           fs.renameSync js_fullpath, js_newpath
 
@@ -269,7 +269,7 @@ arrangeBuildDirAndChmod = (cb) ->
     js_newpath  = path.join(path.dirname(js_fullpath), LIB_DIR, path.basename(js_fullpath))
     mkdirp.sync path.dirname(js_newpath)
     log_subphase 1, "#{js_oldname} ".magenta + "//".white.bold + " assuming library file.".magenta
-    log_subphase 2, "-".white.bold + " compiling...".magenta
+    #log_subphase 2, "-".white.bold + " compiling...".magenta
     log_subphase 2, "-".white.bold + " moving to #{js_newpath.bold}".magenta
     fs.renameSync js_fullpath, js_newpath
 
@@ -340,14 +340,14 @@ install = (install_phase_cb) ->
         async.series [
             ((seriesCb) -> log_subphase 2, "rm #{linkname}".magenta, seriesCb)
             ((seriesCb) -> child_process.exec "rm '#{linkname}'", (err, stdout, stderr) -> seriesCb null), # ignore errors here
-            ((seriesCb) -> log_subphase 2, linkname.magenta.bold + " -> ".cyan + filename.blue.bold)
+            ((seriesCb) -> log_subphase 2, linkname.magenta.bold + " -> ".cyan + filename.blue.bold, seriesCb)
             ((seriesCb) -> child_process.exec "ln -s '#{filename}' '#{linkname}'", seriesCb),
           ],
           (err, results) ->
             if err then console.log err.toString().red
             next()
 
-  runStagedAuto stages, (err, results) -> install_phase_cb err, null
+  runStagedAuto stages, (err, results) => install_phase_cb err, null
 
 runStagedAuto = (stages, cb) ->
   autoObj = {}
@@ -359,7 +359,7 @@ runStagedAuto = (stages, cb) ->
       else           autoObj[stage] = [        (stageCb, results) -> async.forEach(stages[stage], ((fn, forCb) -> fn(forCb)), stageCb) ]
       prev = stage
 
-  async.auto autoObj, (err, results) -> install_phase_cb err, null
+  async.auto autoObj, (err, results) -> cb err, null
 
 
 
