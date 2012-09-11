@@ -1,0 +1,1350 @@
+<!DOCTYPE html><html><head><title>showdown.js</title><meta http-equiv="content-type" content="text/html; charset=UTF-8"><link rel="stylesheet" media="all" href="../../doc-style.css"><script src="../../doc-filelist.js"></script><script>var relativeDir = '../../', thisFile = '/Users/bryn/.otis/templates/tmpl.jade', defaultSidebar = true;</script><script src="../../doc-script.js"></script></head><body><div id="sidebar_wrapper"><div id="sidebar_switch"><span class="tree">Files</span><span class="headings">Headings</span></div><div id="tree"></div><div id="headings"></div></div><div id="sidebar-toggle"></div><div id="container"><div class="background highlight"></div><table cellpadding="0" cellspacing="0"><tbody><tr><td class="docs"><h1>showdown.js</h1></td><td class="code highlight"></td></tr><tr><td class="docs">
+<div class="pilwrap">
+  <a class="pilcrow" href="#section-1" id="section-1">&#182;</a>
+</div>
+</td><td class="code highlight"><div class="highlight"><pre><span class="c1">//</span>
+<span class="c1">// showdown.js -- A javascript port of Markdown.</span>
+<span class="c1">//</span>
+<span class="c1">// Copyright (c) 2007 John Fraser.</span>
+<span class="c1">//</span>
+<span class="c1">// Original Markdown Copyright (c) 2004-2005 John Gruber</span>
+<span class="c1">//   &lt;http://daringfireball.net/projects/markdown/&gt;</span>
+<span class="c1">//</span>
+<span class="c1">// Redistributable under a BSD-style open source license.</span>
+<span class="c1">// See license.txt for more information.</span>
+<span class="c1">//</span>
+<span class="c1">// The full source distribution is at:</span>
+<span class="c1">//</span>
+<span class="c1">//        A A L</span>
+<span class="c1">//        T C A</span>
+<span class="c1">//        T K B</span>
+<span class="c1">//</span>
+<span class="c1">//   &lt;http://www.attacklab.net/&gt;</span>
+<span class="c1">//</span>
+
+<span class="c1">//</span>
+<span class="c1">// Wherever possible, Showdown is a straight, line-by-line port</span>
+<span class="c1">// of the Perl version of Markdown.</span>
+<span class="c1">//</span>
+<span class="c1">// This is not a normal parser design; it&#39;s basically just a</span>
+<span class="c1">// series of string substitutions.  It&#39;s hard to read and</span>
+<span class="c1">// maintain this way,  but keeping Showdown close to the original</span>
+<span class="c1">// design makes it easier to port new features.</span>
+<span class="c1">//</span>
+<span class="c1">// More importantly, Showdown behaves like markdown.pl in most</span>
+<span class="c1">// edge cases.  So web applications can do client-side preview</span>
+<span class="c1">// in Javascript, and then build identical HTML on the server.</span>
+<span class="c1">//</span>
+<span class="c1">// This port needs the new RegExp functionality of ECMA 262,</span>
+<span class="c1">// 3rd Edition (i.e. Javascript 1.5).  Most modern web browsers</span>
+<span class="c1">// should do fine.  Even with the new regular expression features,</span>
+<span class="c1">// We do a lot of work to emulate Perl&#39;s regex functionality.</span>
+<span class="c1">// The tricky changes in this file mostly have the &quot;attacklab:&quot;</span>
+<span class="c1">// label.  Major or self-explanatory changes don&#39;t.</span>
+<span class="c1">//</span>
+<span class="c1">// Smart diff tools like Araxis Merge will be able to match up</span>
+<span class="c1">// this file with markdown.pl in a useful way.  A little tweaking</span>
+<span class="c1">// helps: in a copy of markdown.pl, replace &quot;#&quot; with &quot;//&quot; and</span>
+<span class="c1">// replace &quot;$text&quot; with &quot;text&quot;.  Be sure to ignore whitespace</span>
+<span class="c1">// and line endings.</span>
+<span class="c1">//</span>
+
+
+<span class="c1">//</span>
+<span class="c1">// Showdown usage:</span>
+<span class="c1">//</span>
+<span class="c1">//     var text = &quot;Markdown *rocks*.&quot;;</span>
+<span class="c1">//</span>
+<span class="c1">//     var converter = new Showdown.converter();</span>
+<span class="c1">//     var html = converter.makeHtml(text);</span>
+<span class="c1">//</span>
+<span class="c1">//     alert(html);</span>
+<span class="c1">//</span>
+<span class="c1">// Note: move the sample code to the bottom of this</span>
+<span class="c1">// file before uncommenting it.</span>
+<span class="c1">//</span>
+
+<span class="c1">// *****************************************************</span>
+<span class="c1">// GitHub Flavored Markdown - esque modifications by JT</span>
+<span class="c1">//</span>
+<span class="c1">// Modifications are tagged with &quot;JT&quot;</span>
+<span class="c1">// *****************************************************</span>
+
+<span class="c1">//</span>
+<span class="c1">// Showdown namespace</span>
+<span class="c1">//</span>
+<span class="kd">var</span> <span class="nx">Showdown</span> <span class="o">=</span> <span class="p">{};</span>
+
+<span class="c1">//</span>
+<span class="c1">// converter</span>
+<span class="c1">//</span>
+<span class="c1">// Wraps all &quot;globals&quot; so that the only thing</span>
+<span class="c1">// exposed is makeHtml().</span>
+<span class="c1">//</span>
+<span class="nx">Showdown</span><span class="p">.</span><span class="nx">converter</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+
+<span class="c1">//</span>
+<span class="c1">// Globals:</span>
+<span class="c1">//</span>
+
+<span class="c1">// Global hashes, used by various utility routines</span>
+<span class="kd">var</span> <span class="nx">g_urls</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">g_titles</span><span class="p">;</span>
+<span class="kd">var</span> <span class="nx">g_html_blocks</span><span class="p">;</span>
+
+<span class="c1">// Used to track when we&#39;re inside an ordered or unordered list</span>
+<span class="c1">// (see _ProcessListItems() for details):</span>
+<span class="kd">var</span> <span class="nx">g_list_level</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+
+
+<span class="k">this</span><span class="p">.</span><span class="nx">makeHtml</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Main function. The order in which other subs are called here is</span>
+<span class="c1">// essential. Link and image substitutions need to happen before</span>
+<span class="c1">// _EscapeSpecialCharsWithinTagAttributes(), so that any *&#39;s or _&#39;s in the &lt;a&gt;</span>
+<span class="c1">// and &lt;img&gt; tags get encoded.</span>
+<span class="c1">//</span>
+
+  <span class="c1">// Clear the global hashes. If we don&#39;t clear these, you get conflicts</span>
+  <span class="c1">// from other articles when generating a page which contains more than</span>
+  <span class="c1">// one article (e.g. an index page that shows the N most recent</span>
+  <span class="c1">// articles):</span>
+  <span class="nx">g_urls</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Array</span><span class="p">();</span>
+  <span class="nx">g_titles</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Array</span><span class="p">();</span>
+  <span class="nx">g_html_blocks</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Array</span><span class="p">();</span>
+
+  <span class="c1">// attacklab: Replace ~ with ~T</span>
+  <span class="c1">// This lets us use tilde as an escape char to avoid md5 hashes</span>
+  <span class="c1">// The choice of character is arbitray; anything that isn&#39;t</span>
+    <span class="c1">// magic in Markdown will work.</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~/g</span><span class="p">,</span><span class="s2">&quot;~T&quot;</span><span class="p">);</span>
+
+  <span class="c1">// attacklab: Replace $ with ~D</span>
+  <span class="c1">// RegExp interprets $ as a special character</span>
+  <span class="c1">// when it&#39;s in a replacement string</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\$/g</span><span class="p">,</span><span class="s2">&quot;~D&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Standardize line endings</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\r\n/g</span><span class="p">,</span><span class="s2">&quot;\n&quot;</span><span class="p">);</span> <span class="c1">// DOS to Unix</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\r/g</span><span class="p">,</span><span class="s2">&quot;\n&quot;</span><span class="p">);</span> <span class="c1">// Mac to Unix</span>
+
+  <span class="c1">// Make sure text begins and ends with a couple of newlines:</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="s2">&quot;\n\n&quot;</span> <span class="o">+</span> <span class="nx">text</span> <span class="o">+</span> <span class="s2">&quot;\n\n&quot;</span><span class="p">;</span>
+
+  <span class="c1">// Convert all tabs to spaces.</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_Detab</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// Strip any lines consisting only of spaces and tabs.</span>
+  <span class="c1">// This makes subsequent regexen easier to write, because we can</span>
+  <span class="c1">// match consecutive blank lines with /\n+/ instead of something</span>
+  <span class="c1">// contorted like /[ \t]*\n+/ .</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ \t]+$/mg</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+
+  <span class="c1">// Turn block-level HTML blocks into hash entries</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_HashHTMLBlocks</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// Strip link definitions, store in hashes.</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_StripLinkDefinitions</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_RunBlockGamut</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_UnescapeSpecialChars</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// attacklab: Restore dollar signs</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~D/g</span><span class="p">,</span><span class="s2">&quot;$$&quot;</span><span class="p">);</span>
+
+  <span class="c1">// attacklab: Restore tildes</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~T/g</span><span class="p">,</span><span class="s2">&quot;~&quot;</span><span class="p">);</span>
+
+  <span class="c1">// ** JT **  Auto-link URLs and emails</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/https?\:\/\/[^&quot;\s\&lt;\&gt;]*[^.,;&#39;&quot;&gt;\:\s\&lt;\&gt;\)\]\!]/g</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">matchIndex</span><span class="p">){</span>
+    <span class="kd">var</span> <span class="nx">left</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nx">matchIndex</span><span class="p">),</span> <span class="nx">right</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">slice</span><span class="p">(</span><span class="nx">matchIndex</span><span class="p">)</span>
+    <span class="c1">// Don&#39;t match anything inside a tag, or anything already wrapped in a &lt;code&gt; or an &lt;a&gt;</span>
+    <span class="k">if</span> <span class="p">((</span><span class="nx">left</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/&lt;[^&gt;]+$/</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">right</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^[^&gt;]*&gt;/</span><span class="p">))</span> <span class="o">||</span>
+        <span class="p">(</span><span class="nx">left</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/&lt;(code|a)[^&gt;]*&gt;[^&lt;]*$/</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">right</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^[^&lt;]*&lt;\/(a|code)&gt;/</span><span class="p">)))</span> <span class="p">{</span><span class="k">return</span> <span class="nx">wholeMatch</span><span class="p">}</span>
+    <span class="k">return</span> <span class="s2">&quot;&lt;a href=&#39;&quot;</span> <span class="o">+</span> <span class="nx">wholeMatch</span> <span class="o">+</span> <span class="s2">&quot;&#39;&gt;&quot;</span> <span class="o">+</span> <span class="nx">wholeMatch</span> <span class="o">+</span> <span class="s2">&quot;&lt;/a&gt;&quot;</span><span class="p">;</span>
+  <span class="p">});</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/[a-z0-9_\-+=.]+@[a-z0-9\-]+(\.[a-z0-9-]+)+/ig</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">){</span><span class="k">return</span> <span class="s2">&quot;&lt;a href=&#39;mailto:&quot;</span> <span class="o">+</span> <span class="nx">wholeMatch</span> <span class="o">+</span> <span class="s2">&quot;&#39;&gt;&quot;</span> <span class="o">+</span> <span class="nx">wholeMatch</span> <span class="o">+</span> <span class="s2">&quot;&lt;/a&gt;&quot;</span><span class="p">;});</span>
+
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_StripLinkDefinitions</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Strips link definitions from text, stores the URLs and titles in</span>
+<span class="c1">// hash references.</span>
+<span class="c1">//</span>
+
+  <span class="c1">// Link defs are in the form: ^[id]: url &quot;optional title&quot;</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    var text = text.replace(/</span>
+<span class="cm">        ^[ ]{0,3}\[(.+)\]:  // id = $1  attacklab: g_tab_width - 1</span>
+<span class="cm">          [ \t]*</span>
+<span class="cm">          \n?       // maybe *one* newline</span>
+<span class="cm">          [ \t]*</span>
+<span class="cm">        &lt;?(\S+?)&gt;?      // url = $2</span>
+<span class="cm">          [ \t]*</span>
+<span class="cm">          \n?       // maybe one newline</span>
+<span class="cm">          [ \t]*</span>
+<span class="cm">        (?:</span>
+<span class="cm">          (\n*)       // any lines skipped = $3 attacklab: lookbehind removed</span>
+<span class="cm">          [&quot;(]</span>
+<span class="cm">          (.+?)       // title = $4</span>
+<span class="cm">          [&quot;)]</span>
+<span class="cm">          [ \t]*</span>
+<span class="cm">        )?          // title is optional</span>
+<span class="cm">        (?:\n+|$)</span>
+<span class="cm">        /gm,</span>
+<span class="cm">        function(){...});</span>
+<span class="cm">  */</span>
+  <span class="kd">var</span> <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ ]{0,3}\[(.+)\]:[ \t]*\n?[ \t]*&lt;?(\S+?)&gt;?[ \t]*\n?[ \t]*(?:(\n*)[&quot;(](.+?)[&quot;)][ \t]*)?(?:\n+|\Z)/gm</span><span class="p">,</span>
+    <span class="kd">function</span> <span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">,</span><span class="nx">m3</span><span class="p">,</span><span class="nx">m4</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">m1</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">();</span>
+      <span class="nx">g_urls</span><span class="p">[</span><span class="nx">m1</span><span class="p">]</span> <span class="o">=</span> <span class="nx">_EncodeAmpsAndAngles</span><span class="p">(</span><span class="nx">m2</span><span class="p">);</span>  <span class="c1">// Link IDs are case-insensitive</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">m3</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Oops, found blank lines, so it&#39;s not a title.</span>
+        <span class="c1">// Put back the parenthetical statement we stole.</span>
+        <span class="k">return</span> <span class="nx">m3</span><span class="o">+</span><span class="nx">m4</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">m4</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">g_titles</span><span class="p">[</span><span class="nx">m1</span><span class="p">]</span> <span class="o">=</span> <span class="nx">m4</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&quot;/g</span><span class="p">,</span><span class="s2">&quot;&amp;quot;&quot;</span><span class="p">);</span>
+      <span class="p">}</span>
+
+      <span class="c1">// Completely remove the definition from the text</span>
+      <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_HashHTMLBlocks</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// attacklab: Double up blank lines to reduce lookaround</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n/g</span><span class="p">,</span><span class="s2">&quot;\n\n&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Hashify HTML blocks:</span>
+  <span class="c1">// We only want to do this for block-level HTML tags, such as headers,</span>
+  <span class="c1">// lists, and tables. That&#39;s because we still want to wrap &lt;p&gt;s around</span>
+  <span class="c1">// &quot;paragraphs&quot; that are wrapped in non-block-level tags, such as anchors,</span>
+  <span class="c1">// phrase emphasis, and spans. The list of tags we&#39;re looking for is</span>
+  <span class="c1">// hard-coded:</span>
+  <span class="kd">var</span> <span class="nx">block_tags_a</span> <span class="o">=</span> <span class="s2">&quot;p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del&quot;</span>
+  <span class="kd">var</span> <span class="nx">block_tags_b</span> <span class="o">=</span> <span class="s2">&quot;p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math&quot;</span>
+
+  <span class="c1">// First, look for nested blocks, e.g.:</span>
+  <span class="c1">//   &lt;div&gt;</span>
+  <span class="c1">//     &lt;div&gt;</span>
+  <span class="c1">//     tags for inner block must be indented.</span>
+  <span class="c1">//     &lt;/div&gt;</span>
+  <span class="c1">//   &lt;/div&gt;</span>
+  <span class="c1">//</span>
+  <span class="c1">// The outermost tags must start at the left margin for this to match, and</span>
+  <span class="c1">// the inner nested divs must be indented.</span>
+  <span class="c1">// We need to do this before the next, more liberal match, because the next</span>
+  <span class="c1">// match will start at the first `&lt;div&gt;` and stop at the first `&lt;/div&gt;`.</span>
+
+  <span class="c1">// attacklab: This regex can be expensive when it fails.</span>
+  <span class="cm">/*</span>
+<span class="cm">    var text = text.replace(/</span>
+<span class="cm">    (           // save in $1</span>
+<span class="cm">      ^         // start of line  (with /m)</span>
+<span class="cm">      &lt;($block_tags_a)  // start tag = $2</span>
+<span class="cm">      \b          // word break</span>
+<span class="cm">                // attacklab: hack around khtml/pcre bug...</span>
+<span class="cm">      [^\r]*?\n     // any number of lines, minimally matching</span>
+<span class="cm">      &lt;/\2&gt;       // the matching end tag</span>
+<span class="cm">      [ \t]*        // trailing spaces/tabs</span>
+<span class="cm">      (?=\n+)       // followed by a newline</span>
+<span class="cm">    )           // attacklab: there are sentinel newlines at end of document</span>
+<span class="cm">    /gm,function(){...}};</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^(&lt;(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)\b[^\r]*?\n&lt;\/\2&gt;[ \t]*(?=\n+))/gm</span><span class="p">,</span><span class="nx">hashElement</span><span class="p">);</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// Now match more liberally, simply from `\n&lt;tag&gt;` to `&lt;/tag&gt;\n`</span>
+  <span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    var text = text.replace(/</span>
+<span class="cm">    (           // save in $1</span>
+<span class="cm">      ^         // start of line  (with /m)</span>
+<span class="cm">      &lt;($block_tags_b)  // start tag = $2</span>
+<span class="cm">      \b          // word break</span>
+<span class="cm">                // attacklab: hack around khtml/pcre bug...</span>
+<span class="cm">      [^\r]*?       // any number of lines, minimally matching</span>
+<span class="cm">      .*&lt;/\2&gt;       // the matching end tag</span>
+<span class="cm">      [ \t]*        // trailing spaces/tabs</span>
+<span class="cm">      (?=\n+)       // followed by a newline</span>
+<span class="cm">    )           // attacklab: there are sentinel newlines at end of document</span>
+<span class="cm">    /gm,function(){...}};</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^(&lt;(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math)\b[^\r]*?.*&lt;\/\2&gt;[ \t]*(?=\n+)\n)/gm</span><span class="p">,</span><span class="nx">hashElement</span><span class="p">);</span>
+
+  <span class="c1">// Special case just for &lt;hr /&gt;. It was easier to make a special case than</span>
+  <span class="c1">// to make the other regex more complicated.</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (           // save in $1</span>
+<span class="cm">      \n\n        // Starting after a blank line</span>
+<span class="cm">      [ ]{0,3}</span>
+<span class="cm">      (&lt;(hr)        // start tag = $2</span>
+<span class="cm">      \b          // word break</span>
+<span class="cm">      ([^&lt;&gt;])*?     //</span>
+<span class="cm">      \/?&gt;)       // the matching end tag</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      (?=\n{2,})      // followed by a blank line</span>
+<span class="cm">    )</span>
+<span class="cm">    /g,hashElement);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\n[ ]{0,3}(&lt;(hr)\b([^&lt;&gt;])*?\/?&gt;)[ \t]*(?=\n{2,}))/g</span><span class="p">,</span><span class="nx">hashElement</span><span class="p">);</span>
+
+  <span class="c1">// Special case for standalone HTML comments:</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (           // save in $1</span>
+<span class="cm">      \n\n        // Starting after a blank line</span>
+<span class="cm">      [ ]{0,3}      // attacklab: g_tab_width - 1</span>
+<span class="cm">      &lt;!</span>
+<span class="cm">      (--[^\r]*?--\s*)+</span>
+<span class="cm">      &gt;</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      (?=\n{2,})      // followed by a blank line</span>
+<span class="cm">    )</span>
+<span class="cm">    /g,hashElement);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\n\n[ ]{0,3}&lt;!(--[^\r]*?--\s*)+&gt;[ \t]*(?=\n{2,}))/g</span><span class="p">,</span><span class="nx">hashElement</span><span class="p">);</span>
+
+  <span class="c1">// PHP and ASP-style processor instructions (&lt;?...?&gt; and &lt;%...%&gt;)</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (?:</span>
+<span class="cm">      \n\n        // Starting after a blank line</span>
+<span class="cm">    )</span>
+<span class="cm">    (           // save in $1</span>
+<span class="cm">      [ ]{0,3}      // attacklab: g_tab_width - 1</span>
+<span class="cm">      (?:</span>
+<span class="cm">        &lt;([?%])     // $2</span>
+<span class="cm">        [^\r]*?</span>
+<span class="cm">        \2&gt;</span>
+<span class="cm">      )</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      (?=\n{2,})      // followed by a blank line</span>
+<span class="cm">    )</span>
+<span class="cm">    /g,hashElement);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(?:\n\n)([ ]{0,3}(?:&lt;([?%])[^\r]*?\2&gt;)[ \t]*(?=\n{2,}))/g</span><span class="p">,</span><span class="nx">hashElement</span><span class="p">);</span>
+
+  <span class="c1">// attacklab: Undo double lines (see comment at top of this function)</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n\n/g</span><span class="p">,</span><span class="s2">&quot;\n&quot;</span><span class="p">);</span>
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">hashElement</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">var</span> <span class="nx">blockText</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+
+  <span class="c1">// Undo double lines</span>
+  <span class="nx">blockText</span> <span class="o">=</span> <span class="nx">blockText</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n\n/g</span><span class="p">,</span><span class="s2">&quot;\n&quot;</span><span class="p">);</span>
+  <span class="nx">blockText</span> <span class="o">=</span> <span class="nx">blockText</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^\n/</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="c1">// strip trailing blank lines</span>
+  <span class="nx">blockText</span> <span class="o">=</span> <span class="nx">blockText</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n+$/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Replace the element text with a marker (&quot;~KxK&quot; where x is its key)</span>
+  <span class="nx">blockText</span> <span class="o">=</span> <span class="s2">&quot;\n\n~K&quot;</span> <span class="o">+</span> <span class="p">(</span><span class="nx">g_html_blocks</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">blockText</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;K\n\n&quot;</span><span class="p">;</span>
+
+  <span class="k">return</span> <span class="nx">blockText</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kd">var</span> <span class="nx">_RunBlockGamut</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// These are all the transformations that form block-level</span>
+<span class="c1">// tags like paragraphs, headers, and list items.</span>
+<span class="c1">//</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoCodeBlocks</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoHeaders</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// Do Horizontal Rules:</span>
+  <span class="kd">var</span> <span class="nx">key</span> <span class="o">=</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="s2">&quot;&lt;hr /&gt;&quot;</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ ]{0,2}([ ]?\*[ ]?){3,}[ \t]*$/gm</span><span class="p">,</span><span class="nx">key</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ ]{0,2}([ ]?\-[ ]?){3,}[ \t]*$/gm</span><span class="p">,</span><span class="nx">key</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ ]{0,2}([ ]?\_[ ]?){3,}[ \t]*$/gm</span><span class="p">,</span><span class="nx">key</span><span class="p">);</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoLists</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoBlockQuotes</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// We already ran _HashHTMLBlocks() before, in Markdown(), but that</span>
+  <span class="c1">// was to escape raw HTML in the original Markdown source. This time,</span>
+  <span class="c1">// we&#39;re escaping the markup we&#39;ve just created, so that we don&#39;t wrap</span>
+  <span class="c1">// &lt;p&gt; tags around block-level tags.</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_HashHTMLBlocks</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_FormParagraphs</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_RunSpanGamut</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// These are all the transformations that occur *within* block-level</span>
+<span class="c1">// tags like paragraphs, headers, and list items.</span>
+<span class="c1">//</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoCodeSpans</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_EscapeSpecialCharsWithinTagAttributes</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_EncodeBackslashEscapes</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// Process anchor and image tags. Images must come first,</span>
+  <span class="c1">// because ![foo][f] looks like an anchor.</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoImages</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoAnchors</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// Make links out of things like `&lt;http://example.com/&gt;`</span>
+  <span class="c1">// Must come after _DoAnchors(), because you can use &lt; and &gt;</span>
+  <span class="c1">// delimiters in inline links like [this](&lt;url&gt;).</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoAutoLinks</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_EncodeAmpsAndAngles</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">_DoItalicsAndBold</span><span class="p">(</span><span class="nx">text</span><span class="p">);</span>
+
+  <span class="c1">// Do hard breaks:</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/  +\n/g</span><span class="p">,</span><span class="s2">&quot; &lt;br /&gt;\n&quot;</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">_EscapeSpecialCharsWithinTagAttributes</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Within tags -- meaning between &lt; and &gt; -- encode [\ ` * _] so they</span>
+<span class="c1">// don&#39;t conflict with their use in Markdown for code, italics and strong.</span>
+<span class="c1">//</span>
+
+  <span class="c1">// Build a regex to find HTML tags and comments.  See Friedl&#39;s</span>
+  <span class="c1">// &quot;Mastering Regular Expressions&quot;, 2nd Ed., pp. 200-201.</span>
+  <span class="kd">var</span> <span class="nx">regex</span> <span class="o">=</span> <span class="sr">/(&lt;[a-z\/!$](&quot;[^&quot;]*&quot;|&#39;[^&#39;]*&#39;|[^&#39;&quot;&gt;])*&gt;|&lt;!(--.*?--\s*)+&gt;)/gi</span><span class="p">;</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">regex</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">tag</span> <span class="o">=</span> <span class="nx">wholeMatch</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(.)&lt;\/?code&gt;(?=.)/g</span><span class="p">,</span><span class="s2">&quot;$1`&quot;</span><span class="p">);</span>
+    <span class="nx">tag</span> <span class="o">=</span> <span class="nx">escapeCharacters</span><span class="p">(</span><span class="nx">tag</span><span class="p">,</span><span class="s2">&quot;\\`*_&quot;</span><span class="p">);</span>
+    <span class="k">return</span> <span class="nx">tag</span><span class="p">;</span>
+  <span class="p">});</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">_DoAnchors</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Turn Markdown link shortcuts into XHTML &lt;a&gt; tags.</span>
+<span class="c1">//</span>
+  <span class="c1">//</span>
+  <span class="c1">// First, handle reference-style links: [link text] [id]</span>
+  <span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (             // wrap whole match in $1</span>
+<span class="cm">      \[</span>
+<span class="cm">      (</span>
+<span class="cm">        (?:</span>
+<span class="cm">          \[[^\]]*\]    // allow brackets nested one level</span>
+<span class="cm">          |</span>
+<span class="cm">          [^\[]     // or anything else</span>
+<span class="cm">        )*</span>
+<span class="cm">      )</span>
+<span class="cm">      \]</span>
+
+<span class="cm">      [ ]?          // one optional space</span>
+<span class="cm">      (?:\n[ ]*)?       // one optional newline followed by spaces</span>
+
+<span class="cm">      \[</span>
+<span class="cm">      (.*?)         // id = $3</span>
+<span class="cm">      \]</span>
+<span class="cm">    )()()()()         // pad remaining backreferences</span>
+<span class="cm">    /g,_DoAnchors_callback);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\[((?:\[[^\]]*\]|[^\[\]])*)\][ ]?(?:\n[ ]*)?\[(.*?)\])()()()()/g</span><span class="p">,</span><span class="nx">writeAnchorTag</span><span class="p">);</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// Next, inline-style links: [link text](url &quot;optional title&quot;)</span>
+  <span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">      (           // wrap whole match in $1</span>
+<span class="cm">        \[</span>
+<span class="cm">        (</span>
+<span class="cm">          (?:</span>
+<span class="cm">            \[[^\]]*\]  // allow brackets nested one level</span>
+<span class="cm">          |</span>
+<span class="cm">          [^\[\]]     // or anything else</span>
+<span class="cm">        )</span>
+<span class="cm">      )</span>
+<span class="cm">      \]</span>
+<span class="cm">      \(            // literal paren</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      ()            // no id, so leave $3 empty</span>
+<span class="cm">      &lt;?(.*?)&gt;?       // href = $4</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      (           // $5</span>
+<span class="cm">        ([&#39;&quot;])        // quote char = $6</span>
+<span class="cm">        (.*?)       // Title = $7</span>
+<span class="cm">        \6          // matching quote</span>
+<span class="cm">        [ \t]*        // ignore any spaces/tabs between closing quote and )</span>
+<span class="cm">      )?            // title is optional</span>
+<span class="cm">      \)</span>
+<span class="cm">    )</span>
+<span class="cm">    /g,writeAnchorTag);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\[((?:\[[^\]]*\]|[^\[\]])*)\]\([ \t]*()&lt;?(.*?)&gt;?[ \t]*(([&#39;&quot;])(.*?)\6[ \t]*)?\))/g</span><span class="p">,</span><span class="nx">writeAnchorTag</span><span class="p">);</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// Last, handle reference-style shortcuts: [link text]</span>
+  <span class="c1">// These must come last in case you&#39;ve also got [link test][1]</span>
+  <span class="c1">// or [link test](/foo)</span>
+  <span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (             // wrap whole match in $1</span>
+<span class="cm">      \[</span>
+<span class="cm">      ([^\[\]]+)        // link text = $2; can&#39;t contain &#39;[&#39; or &#39;]&#39;</span>
+<span class="cm">      \]</span>
+<span class="cm">    )()()()()()         // pad rest of backreferences</span>
+<span class="cm">    /g, writeAnchorTag);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\[([^\[\]]+)\])()()()()()/g</span><span class="p">,</span> <span class="nx">writeAnchorTag</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">writeAnchorTag</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">,</span><span class="nx">m3</span><span class="p">,</span><span class="nx">m4</span><span class="p">,</span><span class="nx">m5</span><span class="p">,</span><span class="nx">m6</span><span class="p">,</span><span class="nx">m7</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">m7</span> <span class="o">==</span> <span class="kc">undefined</span><span class="p">)</span> <span class="nx">m7</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">whole_match</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">link_text</span>   <span class="o">=</span> <span class="nx">m2</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">link_id</span>  <span class="o">=</span> <span class="nx">m3</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">();</span>
+  <span class="kd">var</span> <span class="nx">url</span>   <span class="o">=</span> <span class="nx">m4</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">title</span> <span class="o">=</span> <span class="nx">m7</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">url</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">link_id</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// lower-case and turn embedded newlines into spaces</span>
+      <span class="nx">link_id</span> <span class="o">=</span> <span class="nx">link_text</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">().</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/ ?\n/g</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="nx">url</span> <span class="o">=</span> <span class="s2">&quot;#&quot;</span><span class="o">+</span><span class="nx">link_id</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">g_urls</span><span class="p">[</span><span class="nx">link_id</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">url</span> <span class="o">=</span> <span class="nx">g_urls</span><span class="p">[</span><span class="nx">link_id</span><span class="p">];</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">g_titles</span><span class="p">[</span><span class="nx">link_id</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">title</span> <span class="o">=</span> <span class="nx">g_titles</span><span class="p">[</span><span class="nx">link_id</span><span class="p">];</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">whole_match</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="sr">/\(\s*\)$/m</span><span class="p">)</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Special case for explicit empty url</span>
+        <span class="nx">url</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">whole_match</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="nx">url</span> <span class="o">=</span> <span class="nx">escapeCharacters</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span><span class="s2">&quot;*_&quot;</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="s2">&quot;&lt;a href=\&quot;&quot;</span> <span class="o">+</span> <span class="nx">url</span> <span class="o">+</span> <span class="s2">&quot;\&quot;&quot;</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">title</span> <span class="o">!=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">title</span> <span class="o">=</span> <span class="nx">title</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&quot;/g</span><span class="p">,</span><span class="s2">&quot;&amp;quot;&quot;</span><span class="p">);</span>
+    <span class="nx">title</span> <span class="o">=</span> <span class="nx">escapeCharacters</span><span class="p">(</span><span class="nx">title</span><span class="p">,</span><span class="s2">&quot;*_&quot;</span><span class="p">);</span>
+    <span class="nx">result</span> <span class="o">+=</span>  <span class="s2">&quot; title=\&quot;&quot;</span> <span class="o">+</span> <span class="nx">title</span> <span class="o">+</span> <span class="s2">&quot;\&quot;&quot;</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="nx">result</span> <span class="o">+=</span> <span class="s2">&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">link_text</span> <span class="o">+</span> <span class="s2">&quot;&lt;/a&gt;&quot;</span><span class="p">;</span>
+
+  <span class="k">return</span> <span class="nx">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoImages</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Turn Markdown image shortcuts into &lt;img&gt; tags.</span>
+<span class="c1">//</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// First, handle reference-style labeled images: ![alt text][id]</span>
+  <span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (           // wrap whole match in $1</span>
+<span class="cm">      !\[</span>
+<span class="cm">      (.*?)       // alt text = $2</span>
+<span class="cm">      \]</span>
+
+<span class="cm">      [ ]?        // one optional space</span>
+<span class="cm">      (?:\n[ ]*)?     // one optional newline followed by spaces</span>
+
+<span class="cm">      \[</span>
+<span class="cm">      (.*?)       // id = $3</span>
+<span class="cm">      \]</span>
+<span class="cm">    )()()()()       // pad rest of backreferences</span>
+<span class="cm">    /g,writeImageTag);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(!\[(.*?)\][ ]?(?:\n[ ]*)?\[(.*?)\])()()()()/g</span><span class="p">,</span><span class="nx">writeImageTag</span><span class="p">);</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// Next, handle inline images:  ![alt text](url &quot;optional title&quot;)</span>
+  <span class="c1">// Don&#39;t forget: encode * and _</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (           // wrap whole match in $1</span>
+<span class="cm">      !\[</span>
+<span class="cm">      (.*?)       // alt text = $2</span>
+<span class="cm">      \]</span>
+<span class="cm">      \s?         // One optional whitespace character</span>
+<span class="cm">      \(          // literal paren</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      ()          // no id, so leave $3 empty</span>
+<span class="cm">      &lt;?(\S+?)&gt;?      // src url = $4</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      (         // $5</span>
+<span class="cm">        ([&#39;&quot;])      // quote char = $6</span>
+<span class="cm">        (.*?)     // title = $7</span>
+<span class="cm">        \6        // matching quote</span>
+<span class="cm">        [ \t]*</span>
+<span class="cm">      )?          // title is optional</span>
+<span class="cm">    \)</span>
+<span class="cm">    )</span>
+<span class="cm">    /g,writeImageTag);</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(!\[(.*?)\]\s?\([ \t]*()&lt;?(\S+?)&gt;?[ \t]*(([&#39;&quot;])(.*?)\6[ \t]*)?\))/g</span><span class="p">,</span><span class="nx">writeImageTag</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">writeImageTag</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">,</span><span class="nx">m3</span><span class="p">,</span><span class="nx">m4</span><span class="p">,</span><span class="nx">m5</span><span class="p">,</span><span class="nx">m6</span><span class="p">,</span><span class="nx">m7</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">var</span> <span class="nx">whole_match</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">alt_text</span>   <span class="o">=</span> <span class="nx">m2</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">link_id</span>  <span class="o">=</span> <span class="nx">m3</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">();</span>
+  <span class="kd">var</span> <span class="nx">url</span>   <span class="o">=</span> <span class="nx">m4</span><span class="p">;</span>
+  <span class="kd">var</span> <span class="nx">title</span> <span class="o">=</span> <span class="nx">m7</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">title</span><span class="p">)</span> <span class="nx">title</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">url</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">link_id</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// lower-case and turn embedded newlines into spaces</span>
+      <span class="nx">link_id</span> <span class="o">=</span> <span class="nx">alt_text</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">().</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/ ?\n/g</span><span class="p">,</span><span class="s2">&quot; &quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="nx">url</span> <span class="o">=</span> <span class="s2">&quot;#&quot;</span><span class="o">+</span><span class="nx">link_id</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">g_urls</span><span class="p">[</span><span class="nx">link_id</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">url</span> <span class="o">=</span> <span class="nx">g_urls</span><span class="p">[</span><span class="nx">link_id</span><span class="p">];</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">g_titles</span><span class="p">[</span><span class="nx">link_id</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">title</span> <span class="o">=</span> <span class="nx">g_titles</span><span class="p">[</span><span class="nx">link_id</span><span class="p">];</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">whole_match</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="nx">alt_text</span> <span class="o">=</span> <span class="nx">alt_text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&quot;/g</span><span class="p">,</span><span class="s2">&quot;&amp;quot;&quot;</span><span class="p">);</span>
+  <span class="nx">url</span> <span class="o">=</span> <span class="nx">escapeCharacters</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span><span class="s2">&quot;*_&quot;</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="s2">&quot;&lt;img src=\&quot;&quot;</span> <span class="o">+</span> <span class="nx">url</span> <span class="o">+</span> <span class="s2">&quot;\&quot; alt=\&quot;&quot;</span> <span class="o">+</span> <span class="nx">alt_text</span> <span class="o">+</span> <span class="s2">&quot;\&quot;&quot;</span><span class="p">;</span>
+
+  <span class="c1">// attacklab: Markdown.pl adds empty title attributes to images.</span>
+  <span class="c1">// Replicate this bug.</span>
+
+  <span class="c1">//if (title != &quot;&quot;) {</span>
+    <span class="nx">title</span> <span class="o">=</span> <span class="nx">title</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&quot;/g</span><span class="p">,</span><span class="s2">&quot;&amp;quot;&quot;</span><span class="p">);</span>
+    <span class="nx">title</span> <span class="o">=</span> <span class="nx">escapeCharacters</span><span class="p">(</span><span class="nx">title</span><span class="p">,</span><span class="s2">&quot;*_&quot;</span><span class="p">);</span>
+    <span class="nx">result</span> <span class="o">+=</span>  <span class="s2">&quot; title=\&quot;&quot;</span> <span class="o">+</span> <span class="nx">title</span> <span class="o">+</span> <span class="s2">&quot;\&quot;&quot;</span><span class="p">;</span>
+  <span class="c1">//}</span>
+
+  <span class="nx">result</span> <span class="o">+=</span> <span class="s2">&quot; /&gt;&quot;</span><span class="p">;</span>
+
+  <span class="k">return</span> <span class="nx">result</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoHeaders</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+
+  <span class="c1">// Setext-style headers:</span>
+  <span class="c1">//  Header 1</span>
+  <span class="c1">//  ========</span>
+  <span class="c1">//</span>
+  <span class="c1">//  Header 2</span>
+  <span class="c1">//  --------</span>
+  <span class="c1">//</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^(.+)[ \t]*\n=+[ \t]*\n+/gm</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">){</span><span class="k">return</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="s2">&quot;&lt;h1&gt;&quot;</span> <span class="o">+</span> <span class="nx">_RunSpanGamut</span><span class="p">(</span><span class="nx">m1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&lt;/h1&gt;&quot;</span><span class="p">);});</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^(.+)[ \t]*\n-+[ \t]*\n+/gm</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">matchFound</span><span class="p">,</span><span class="nx">m1</span><span class="p">){</span><span class="k">return</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="s2">&quot;&lt;h2&gt;&quot;</span> <span class="o">+</span> <span class="nx">_RunSpanGamut</span><span class="p">(</span><span class="nx">m1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&lt;/h2&gt;&quot;</span><span class="p">);});</span>
+
+  <span class="c1">// atx-style headers:</span>
+  <span class="c1">//  # Header 1</span>
+  <span class="c1">//  ## Header 2</span>
+  <span class="c1">//  ## Header 2 with closing hashes ##</span>
+  <span class="c1">//  ...</span>
+  <span class="c1">//  ###### Header 6</span>
+  <span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">      ^(\#{1,6})        // $1 = string of #&#39;s</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      (.+?)         // $2 = Header text</span>
+<span class="cm">      [ \t]*</span>
+<span class="cm">      \#*           // optional closing #&#39;s (not counted)</span>
+<span class="cm">      \n+</span>
+<span class="cm">    /gm, function() {...});</span>
+<span class="cm">  */</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^(\#{1,6})[ \t]*(.+?)[ \t]*\#*\n+/gm</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">h_level</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+      <span class="k">return</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="s2">&quot;&lt;h&quot;</span> <span class="o">+</span> <span class="nx">h_level</span> <span class="o">+</span> <span class="s2">&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">_RunSpanGamut</span><span class="p">(</span><span class="nx">m2</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&lt;/h&quot;</span> <span class="o">+</span> <span class="nx">h_level</span> <span class="o">+</span> <span class="s2">&quot;&gt;&quot;</span><span class="p">);</span>
+    <span class="p">});</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// This declaration keeps Dojo compressor from outputting garbage:</span>
+<span class="kd">var</span> <span class="nx">_ProcessListItems</span><span class="p">;</span>
+
+<span class="kd">var</span> <span class="nx">_DoLists</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Form HTML ordered (numbered) and unordered (bulleted) lists.</span>
+<span class="c1">//</span>
+
+  <span class="c1">// attacklab: add sentinel to hack around khtml/safari bug:</span>
+  <span class="c1">// http://bugs.webkit.org/show_bug.cgi?id=11231</span>
+  <span class="nx">text</span> <span class="o">+=</span> <span class="s2">&quot;~0&quot;</span><span class="p">;</span>
+
+  <span class="c1">// Re-usable pattern to match any entirel ul or ol list:</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    var whole_list = /</span>
+<span class="cm">    (                 // $1 = whole list</span>
+<span class="cm">      (               // $2</span>
+<span class="cm">        [ ]{0,3}          // attacklab: g_tab_width - 1</span>
+<span class="cm">        ([*+-]|\d+[.])        // $3 = first list item marker</span>
+<span class="cm">        [ \t]+</span>
+<span class="cm">      )</span>
+<span class="cm">      [^\r]+?</span>
+<span class="cm">      (               // $4</span>
+<span class="cm">        ~0              // sentinel for workaround; should be $</span>
+<span class="cm">      |</span>
+<span class="cm">        \n{2,}</span>
+<span class="cm">        (?=\S)</span>
+<span class="cm">        (?!             // Negative lookahead for another list item marker</span>
+<span class="cm">          [ \t]*</span>
+<span class="cm">          (?:[*+-]|\d+[.])[ \t]+</span>
+<span class="cm">        )</span>
+<span class="cm">      )</span>
+<span class="cm">    )/g</span>
+<span class="cm">  */</span>
+  <span class="kd">var</span> <span class="nx">whole_list</span> <span class="o">=</span> <span class="sr">/^(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/gm</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">g_list_level</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">whole_list</span><span class="p">,</span><span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">list</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+      <span class="kd">var</span> <span class="nx">list_type</span> <span class="o">=</span> <span class="p">(</span><span class="nx">m2</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="sr">/[*+-]/g</span><span class="p">)</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)</span> <span class="o">?</span> <span class="s2">&quot;ul&quot;</span> <span class="o">:</span> <span class="s2">&quot;ol&quot;</span><span class="p">;</span>
+
+      <span class="c1">// Turn double returns into triple returns, so that we can make a</span>
+      <span class="c1">// paragraph for the last item in a list, if necessary:</span>
+      <span class="nx">list</span> <span class="o">=</span> <span class="nx">list</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n{2,}/g</span><span class="p">,</span><span class="s2">&quot;\n\n\n&quot;</span><span class="p">);;</span>
+      <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="nx">_ProcessListItems</span><span class="p">(</span><span class="nx">list</span><span class="p">);</span>
+
+      <span class="c1">// Trim any trailing whitespace, to put the closing `&lt;/$list_type&gt;`</span>
+      <span class="c1">// up on the preceding line, to get it past the current stupid</span>
+      <span class="c1">// HTML block parser. This is a hack to work around the terrible</span>
+      <span class="c1">// hack that is the HTML block parser.</span>
+      <span class="nx">result</span> <span class="o">=</span> <span class="nx">result</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\s+$/</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+      <span class="nx">result</span> <span class="o">=</span> <span class="s2">&quot;&lt;&quot;</span><span class="o">+</span><span class="nx">list_type</span><span class="o">+</span><span class="s2">&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">result</span> <span class="o">+</span> <span class="s2">&quot;&lt;/&quot;</span><span class="o">+</span><span class="nx">list_type</span><span class="o">+</span><span class="s2">&quot;&gt;\n&quot;</span><span class="p">;</span>
+      <span class="k">return</span> <span class="nx">result</span><span class="p">;</span>
+    <span class="p">});</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">whole_list</span> <span class="o">=</span> <span class="sr">/(\n\n|^\n?)(([ ]{0,3}([*+-]|\d+[.])[ \t]+)[^\r]+?(~0|\n{2,}(?=\S)(?![ \t]*(?:[*+-]|\d+[.])[ \t]+)))/g</span><span class="p">;</span>
+    <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">whole_list</span><span class="p">,</span><span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">,</span><span class="nx">m3</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">runup</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+      <span class="kd">var</span> <span class="nx">list</span> <span class="o">=</span> <span class="nx">m2</span><span class="p">;</span>
+
+      <span class="kd">var</span> <span class="nx">list_type</span> <span class="o">=</span> <span class="p">(</span><span class="nx">m3</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="sr">/[*+-]/g</span><span class="p">)</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)</span> <span class="o">?</span> <span class="s2">&quot;ul&quot;</span> <span class="o">:</span> <span class="s2">&quot;ol&quot;</span><span class="p">;</span>
+      <span class="c1">// Turn double returns into triple returns, so that we can make a</span>
+      <span class="c1">// paragraph for the last item in a list, if necessary:</span>
+      <span class="kd">var</span> <span class="nx">list</span> <span class="o">=</span> <span class="nx">list</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n{2,}/g</span><span class="p">,</span><span class="s2">&quot;\n\n\n&quot;</span><span class="p">);;</span>
+      <span class="kd">var</span> <span class="nx">result</span> <span class="o">=</span> <span class="nx">_ProcessListItems</span><span class="p">(</span><span class="nx">list</span><span class="p">);</span>
+      <span class="nx">result</span> <span class="o">=</span> <span class="nx">runup</span> <span class="o">+</span> <span class="s2">&quot;&lt;&quot;</span><span class="o">+</span><span class="nx">list_type</span><span class="o">+</span><span class="s2">&quot;&gt;\n&quot;</span> <span class="o">+</span> <span class="nx">result</span> <span class="o">+</span> <span class="s2">&quot;&lt;/&quot;</span><span class="o">+</span><span class="nx">list_type</span><span class="o">+</span><span class="s2">&quot;&gt;\n&quot;</span><span class="p">;</span>
+      <span class="k">return</span> <span class="nx">result</span><span class="p">;</span>
+    <span class="p">});</span>
+  <span class="p">}</span>
+
+  <span class="c1">// attacklab: strip sentinel</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~0/</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="nx">_ProcessListItems</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">list_str</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">//  Process the contents of a single ordered or unordered list, splitting it</span>
+<span class="c1">//  into individual list items.</span>
+<span class="c1">//</span>
+  <span class="c1">// The $g_list_level global keeps track of when we&#39;re inside a list.</span>
+  <span class="c1">// Each time we enter a list, we increment it; when we leave a list,</span>
+  <span class="c1">// we decrement. If it&#39;s zero, we&#39;re not in a list anymore.</span>
+  <span class="c1">//</span>
+  <span class="c1">// We do this because when we&#39;re not inside a list, we want to treat</span>
+  <span class="c1">// something like this:</span>
+  <span class="c1">//</span>
+  <span class="c1">//    I recommend upgrading to version</span>
+  <span class="c1">//    8. Oops, now this line is treated</span>
+  <span class="c1">//    as a sub-list.</span>
+  <span class="c1">//</span>
+  <span class="c1">// As a single paragraph, despite the fact that the second line starts</span>
+  <span class="c1">// with a digit-period-space sequence.</span>
+  <span class="c1">//</span>
+  <span class="c1">// Whereas when we&#39;re inside a list (or sub-list), that line will be</span>
+  <span class="c1">// treated as the start of a sub-list. What a kludge, huh? This is</span>
+  <span class="c1">// an aspect of Markdown&#39;s syntax that&#39;s hard to parse perfectly</span>
+  <span class="c1">// without resorting to mind-reading. Perhaps the solution is to</span>
+  <span class="c1">// change the syntax rules such that sub-lists must start with a</span>
+  <span class="c1">// starting cardinal number; e.g. &quot;1.&quot; or &quot;a.&quot;.</span>
+
+  <span class="nx">g_list_level</span><span class="o">++</span><span class="p">;</span>
+
+  <span class="c1">// trim trailing blank lines:</span>
+  <span class="nx">list_str</span> <span class="o">=</span> <span class="nx">list_str</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n{2,}$/</span><span class="p">,</span><span class="s2">&quot;\n&quot;</span><span class="p">);</span>
+
+  <span class="c1">// attacklab: add sentinel to emulate \z</span>
+  <span class="nx">list_str</span> <span class="o">+=</span> <span class="s2">&quot;~0&quot;</span><span class="p">;</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    list_str = list_str.replace(/</span>
+<span class="cm">      (\n)?             // leading line = $1</span>
+<span class="cm">      (^[ \t]*)           // leading whitespace = $2</span>
+<span class="cm">      ([*+-]|\d+[.]) [ \t]+     // list marker = $3</span>
+<span class="cm">      ([^\r]+?            // list item text   = $4</span>
+<span class="cm">      (\n{1,2}))</span>
+<span class="cm">      (?= \n* (~0 | \2 ([*+-]|\d+[.]) [ \t]+))</span>
+<span class="cm">    /gm, function(){...});</span>
+<span class="cm">  */</span>
+  <span class="nx">list_str</span> <span class="o">=</span> <span class="nx">list_str</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\n)?(^[ \t]*)([*+-]|\d+[.])[ \t]+([^\r]+?(\n{1,2}))(?=\n*(~0|\2([*+-]|\d+[.])[ \t]+))/gm</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">,</span><span class="nx">m3</span><span class="p">,</span><span class="nx">m4</span><span class="p">){</span>
+      <span class="kd">var</span> <span class="nx">item</span> <span class="o">=</span> <span class="nx">m4</span><span class="p">;</span>
+      <span class="kd">var</span> <span class="nx">leading_line</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+      <span class="kd">var</span> <span class="nx">leading_space</span> <span class="o">=</span> <span class="nx">m2</span><span class="p">;</span>
+
+      <span class="k">if</span> <span class="p">(</span><span class="nx">leading_line</span> <span class="o">||</span> <span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="sr">/\n{2,}/</span><span class="p">)</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">))</span> <span class="p">{</span>
+        <span class="nx">item</span> <span class="o">=</span> <span class="nx">_RunBlockGamut</span><span class="p">(</span><span class="nx">_Outdent</span><span class="p">(</span><span class="nx">item</span><span class="p">));</span>
+      <span class="p">}</span>
+      <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// Recursion for sub-lists:</span>
+        <span class="nx">item</span> <span class="o">=</span> <span class="nx">_DoLists</span><span class="p">(</span><span class="nx">_Outdent</span><span class="p">(</span><span class="nx">item</span><span class="p">));</span>
+        <span class="nx">item</span> <span class="o">=</span> <span class="nx">item</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n$/</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// chomp(item)</span>
+        <span class="nx">item</span> <span class="o">=</span> <span class="nx">_RunSpanGamut</span><span class="p">(</span><span class="nx">item</span><span class="p">);</span>
+      <span class="p">}</span>
+
+      <span class="k">return</span>  <span class="s2">&quot;&lt;li&gt;&quot;</span> <span class="o">+</span> <span class="nx">item</span> <span class="o">+</span> <span class="s2">&quot;&lt;/li&gt;\n&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="c1">// attacklab: strip sentinel</span>
+  <span class="nx">list_str</span> <span class="o">=</span> <span class="nx">list_str</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~0/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="nx">g_list_level</span><span class="o">--</span><span class="p">;</span>
+  <span class="k">return</span> <span class="nx">list_str</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoCodeBlocks</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">//  Process Markdown `&lt;pre&gt;&lt;code&gt;` blocks.</span>
+<span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(text,</span>
+<span class="cm">      /(?:\n\n|^)</span>
+<span class="cm">      (               // $1 = the code block -- one or more lines, starting with a space/tab</span>
+<span class="cm">        (?:</span>
+<span class="cm">          (?:[ ]{4}|\t)     // Lines must start with a tab or a tab-width of spaces - attacklab: g_tab_width</span>
+<span class="cm">          .*\n+</span>
+<span class="cm">        )+</span>
+<span class="cm">      )</span>
+<span class="cm">      (\n*[ ]{0,3}[^ \t\n]|(?=~0))  // attacklab: g_tab_width</span>
+<span class="cm">    /g,function(){...});</span>
+<span class="cm">  */</span>
+
+  <span class="c1">// attacklab: sentinel workarounds for lack of \A and \Z, safari\khtml bug</span>
+  <span class="nx">text</span> <span class="o">+=</span> <span class="s2">&quot;~0&quot;</span><span class="p">;</span>
+
+  <span class="cm">/* ** JT ** GFM-esque fenced code blocks</span>
+<span class="cm">    text = text.replace(text,</span>
+<span class="cm">      /(?:\n|^)</span>
+<span class="cm">      (?`{3,}[ a-z]*\n?)        // Code fence with optional language</span>
+<span class="cm">      (                         // $1 = the code block -- one or more lines, and no occurrences of three or more backticks</span>
+<span class="cm">        [^`]*(?:`{1,2}[^`]+)*</span>
+<span class="cm">      )</span>
+<span class="cm">      (?:\n*`{3,})              // Closing fence</span>
+<span class="cm">      (?:\n|$)                  // And make sure we get all of the closing fence. Just in case someone used the wrong number of backticks</span>
+<span class="cm">    /g,function(){...});</span>
+<span class="cm">  */</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(?:\n|^)(?:`{3,}\s*([a-z]*)\n)([^`]*(?:`{1,2}[^`]+)*)(?:\n*`{3,})(?:\n|^)/g</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">lang</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">_EncodeCode</span><span class="p">(</span><span class="nx">codeblock</span><span class="p">);</span>
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">_Detab</span><span class="p">(</span><span class="nx">codeblock</span><span class="p">);</span>
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">codeblock</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^\n+/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// trim leading newlines</span>
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">codeblock</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n+$/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// trim trailing whitespace</span>
+
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="s2">&quot;&lt;pre&gt;&lt;code language=&#39;&quot;</span> <span class="o">+</span> <span class="nx">lang</span> <span class="o">+</span> <span class="s2">&quot;&#39;&gt;&quot;</span> <span class="o">+</span> <span class="nx">codeblock</span> <span class="o">+</span> <span class="s2">&quot;\n&lt;/code&gt;&lt;/pre&gt;&quot;</span><span class="p">;</span>
+
+      <span class="k">return</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="nx">codeblock</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(?:\n\n|^)((?:(?:[ ]{4}|\t).*\n+)+)(\n*[ ]{0,3}[^ \t\n]|(?=~0))/g</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+      <span class="kd">var</span> <span class="nx">nextChar</span> <span class="o">=</span> <span class="nx">m2</span><span class="p">;</span>
+
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">_EncodeCode</span><span class="p">(</span> <span class="nx">_Outdent</span><span class="p">(</span><span class="nx">codeblock</span><span class="p">));</span>
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">_Detab</span><span class="p">(</span><span class="nx">codeblock</span><span class="p">);</span>
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">codeblock</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^\n+/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// trim leading newlines</span>
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="nx">codeblock</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n+$/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// trim trailing whitespace</span>
+
+      <span class="nx">codeblock</span> <span class="o">=</span> <span class="s2">&quot;&lt;pre&gt;&lt;code&gt;&quot;</span> <span class="o">+</span> <span class="nx">codeblock</span> <span class="o">+</span> <span class="s2">&quot;\n&lt;/code&gt;&lt;/pre&gt;&quot;</span><span class="p">;</span>
+
+      <span class="k">return</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="nx">codeblock</span><span class="p">)</span> <span class="o">+</span> <span class="nx">nextChar</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="c1">// attacklab: strip sentinel</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~0/</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">hashBlock</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(^\n+|\n+$)/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+  <span class="k">return</span> <span class="s2">&quot;\n\n~K&quot;</span> <span class="o">+</span> <span class="p">(</span><span class="nx">g_html_blocks</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;K\n\n&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoCodeSpans</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">//   *  Backtick quotes are used for &lt;code&gt;&lt;/code&gt; spans.</span>
+<span class="c1">//</span>
+<span class="c1">//   *  You can use multiple backticks as the delimiters if you want to</span>
+<span class="c1">//   include literal backticks in the code span. So, this input:</span>
+<span class="c1">//</span>
+<span class="c1">//     Just type ``foo `bar` baz`` at the prompt.</span>
+<span class="c1">//</span>
+<span class="c1">//     Will translate to:</span>
+<span class="c1">//</span>
+<span class="c1">//     &lt;p&gt;Just type &lt;code&gt;foo `bar` baz&lt;/code&gt; at the prompt.&lt;/p&gt;</span>
+<span class="c1">//</span>
+<span class="c1">//  There&#39;s no arbitrary limit to the number of backticks you</span>
+<span class="c1">//  can use as delimters. If you need three consecutive backticks</span>
+<span class="c1">//  in your code, use four for delimiters, etc.</span>
+<span class="c1">//</span>
+<span class="c1">//  *  You can use spaces to get literal backticks at the edges:</span>
+<span class="c1">//</span>
+<span class="c1">//     ... type `` `bar` `` ...</span>
+<span class="c1">//</span>
+<span class="c1">//     Turns to:</span>
+<span class="c1">//</span>
+<span class="c1">//     ... type &lt;code&gt;`bar`&lt;/code&gt; ...</span>
+<span class="c1">//</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">      (^|[^\\])         // Character before opening ` can&#39;t be a backslash</span>
+<span class="cm">      (`+)            // $2 = Opening run of `</span>
+<span class="cm">      (             // $3 = The code block</span>
+<span class="cm">        [^\r]*?</span>
+<span class="cm">        [^`]          // attacklab: work around lack of lookbehind</span>
+<span class="cm">      )</span>
+<span class="cm">      \2              // Matching closer</span>
+<span class="cm">      (?!`)</span>
+<span class="cm">    /gm, function(){...});</span>
+<span class="cm">  */</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(^|[^\\])(`+)([^\r]*?[^`])\2(?!`)/gm</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">,</span><span class="nx">m3</span><span class="p">,</span><span class="nx">m4</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">c</span> <span class="o">=</span> <span class="nx">m3</span><span class="p">;</span>
+      <span class="nx">c</span> <span class="o">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^([ \t]*)/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// leading whitespace</span>
+      <span class="nx">c</span> <span class="o">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/[ \t]*$/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span> <span class="c1">// trailing whitespace</span>
+      <span class="nx">c</span> <span class="o">=</span> <span class="nx">_EncodeCode</span><span class="p">(</span><span class="nx">c</span><span class="p">);</span>
+      <span class="k">return</span> <span class="nx">m1</span><span class="o">+</span><span class="s2">&quot;&lt;code&gt;&quot;</span><span class="o">+</span><span class="nx">c</span><span class="o">+</span><span class="s2">&quot;&lt;/code&gt;&quot;</span><span class="p">;</span>
+    <span class="p">});</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_EncodeCode</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Encode/escape certain characters inside Markdown code runs.</span>
+<span class="c1">// The point is that in code, these characters are literals,</span>
+<span class="c1">// and lose their special Markdown meanings.</span>
+<span class="c1">//</span>
+  <span class="c1">// Encode all ampersands; HTML entities are not</span>
+  <span class="c1">// entities within a Markdown code span.</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&amp;/g</span><span class="p">,</span><span class="s2">&quot;&amp;amp;&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Do the angle bracket song and dance:</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;/g</span><span class="p">,</span><span class="s2">&quot;&amp;lt;&quot;</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&gt;/g</span><span class="p">,</span><span class="s2">&quot;&amp;gt;&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Now, escape characters that are magic in Markdown:</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">escapeCharacters</span><span class="p">(</span><span class="nx">text</span><span class="p">,</span><span class="s2">&quot;\*_{}[]\\&quot;</span><span class="p">,</span><span class="kc">false</span><span class="p">);</span>
+
+<span class="c1">// jj the line above breaks this:</span>
+<span class="c1">//---</span>
+
+<span class="c1">//* Item</span>
+
+<span class="c1">//   1. Subitem</span>
+
+<span class="c1">//            special char: *</span>
+<span class="c1">//---</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoItalicsAndBold</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+
+  <span class="c1">// &lt;strong&gt; must go first:</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\*\*|__)(?=\S)([^\r]*?\S[*_]*)\1/g</span><span class="p">,</span>
+    <span class="s2">&quot;&lt;strong&gt;$2&lt;/strong&gt;&quot;</span><span class="p">);</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\w)_(\w)/g</span><span class="p">,</span> <span class="s2">&quot;$1~E95E$2&quot;</span><span class="p">)</span> <span class="c1">// ** JT **  &quot;~E95E&quot; == escaped &quot;_&quot;</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(\*|_)(?=\S)([^\r]*?\S)\1/g</span><span class="p">,</span>
+    <span class="s2">&quot;&lt;em&gt;$2&lt;/em&gt;&quot;</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoBlockQuotes</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">    (               // Wrap whole match in $1</span>
+<span class="cm">      (</span>
+<span class="cm">        ^[ \t]*&gt;[ \t]?      // &#39;&gt;&#39; at the start of a line</span>
+<span class="cm">        .+\n          // rest of the first line</span>
+<span class="cm">        (.+\n)*         // subsequent consecutive lines</span>
+<span class="cm">        \n*           // blanks</span>
+<span class="cm">      )+</span>
+<span class="cm">    )</span>
+<span class="cm">    /gm, function(){...});</span>
+<span class="cm">  */</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/((^[ \t]*&gt;[ \t]?.+\n(.+\n)*\n*)+)/gm</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">bq</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+
+      <span class="c1">// attacklab: hack around Konqueror 3.5.4 bug:</span>
+      <span class="c1">// &quot;----------bug&quot;.replace(/^-/g,&quot;&quot;) == &quot;bug&quot;</span>
+
+      <span class="nx">bq</span> <span class="o">=</span> <span class="nx">bq</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ \t]*&gt;[ \t]?/gm</span><span class="p">,</span><span class="s2">&quot;~0&quot;</span><span class="p">);</span> <span class="c1">// trim one level of quoting</span>
+
+      <span class="c1">// attacklab: clean up hack</span>
+      <span class="nx">bq</span> <span class="o">=</span> <span class="nx">bq</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~0/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+      <span class="nx">bq</span> <span class="o">=</span> <span class="nx">bq</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[ \t]+$/gm</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>   <span class="c1">// trim whitespace-only lines</span>
+      <span class="nx">bq</span> <span class="o">=</span> <span class="nx">_RunBlockGamut</span><span class="p">(</span><span class="nx">bq</span><span class="p">);</span>        <span class="c1">// recurse</span>
+
+      <span class="nx">bq</span> <span class="o">=</span> <span class="nx">bq</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(^|\n)/g</span><span class="p">,</span><span class="s2">&quot;$1  &quot;</span><span class="p">);</span>
+      <span class="c1">// These leading spaces screw with &lt;pre&gt; content, so we need to fix that:</span>
+      <span class="nx">bq</span> <span class="o">=</span> <span class="nx">bq</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span>
+          <span class="sr">/(\s*&lt;pre&gt;[^\r]+?&lt;\/pre&gt;)/gm</span><span class="p">,</span>
+        <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+          <span class="kd">var</span> <span class="nx">pre</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+          <span class="c1">// attacklab: hack around Konqueror 3.5.4 bug:</span>
+          <span class="nx">pre</span> <span class="o">=</span> <span class="nx">pre</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^  /mg</span><span class="p">,</span><span class="s2">&quot;~0&quot;</span><span class="p">);</span>
+          <span class="nx">pre</span> <span class="o">=</span> <span class="nx">pre</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~0/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+          <span class="k">return</span> <span class="nx">pre</span><span class="p">;</span>
+        <span class="p">});</span>
+
+      <span class="k">return</span> <span class="nx">hashBlock</span><span class="p">(</span><span class="s2">&quot;&lt;blockquote&gt;\n&quot;</span> <span class="o">+</span> <span class="nx">bq</span> <span class="o">+</span> <span class="s2">&quot;\n&lt;/blockquote&gt;&quot;</span><span class="p">);</span>
+    <span class="p">});</span>
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_FormParagraphs</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">//  Params:</span>
+<span class="c1">//    $text - string to process with html &lt;p&gt; tags</span>
+<span class="c1">//</span>
+
+  <span class="c1">// Strip leading and trailing lines:</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^\n+/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n+$/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="kd">var</span> <span class="nx">grafs</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="sr">/\n{2,}/g</span><span class="p">);</span>
+  <span class="kd">var</span> <span class="nx">grafsOut</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Array</span><span class="p">();</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// Wrap &lt;p&gt; tags.</span>
+  <span class="c1">//</span>
+  <span class="kd">var</span> <span class="nx">end</span> <span class="o">=</span> <span class="nx">grafs</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">&lt;</span><span class="nx">end</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">str</span> <span class="o">=</span> <span class="nx">grafs</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+
+    <span class="c1">// if this is an HTML marker, copy it</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">str</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="sr">/~K(\d+)K/g</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">grafsOut</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">str</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">str</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="sr">/\S/</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">str</span> <span class="o">=</span> <span class="nx">_RunSpanGamut</span><span class="p">(</span><span class="nx">str</span><span class="p">);</span>
+      <span class="nx">str</span> <span class="o">=</span> <span class="nx">str</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^([ \t]*)/g</span><span class="p">,</span><span class="s2">&quot;&lt;p&gt;&quot;</span><span class="p">);</span>
+      <span class="nx">str</span> <span class="o">+=</span> <span class="s2">&quot;&lt;/p&gt;&quot;</span>
+      <span class="nx">grafsOut</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">str</span><span class="p">);</span>
+    <span class="p">}</span>
+
+  <span class="p">}</span>
+
+  <span class="c1">//</span>
+  <span class="c1">// Unhashify HTML blocks</span>
+  <span class="c1">//</span>
+  <span class="nx">end</span> <span class="o">=</span> <span class="nx">grafsOut</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">&lt;</span><span class="nx">end</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// if this is a marker for an html block...</span>
+    <span class="k">while</span> <span class="p">(</span><span class="nx">grafsOut</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">search</span><span class="p">(</span><span class="sr">/~K(\d+)K/</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">blockText</span> <span class="o">=</span> <span class="nx">g_html_blocks</span><span class="p">[</span><span class="nb">RegExp</span><span class="p">.</span><span class="nx">$1</span><span class="p">];</span>
+      <span class="nx">blockText</span> <span class="o">=</span> <span class="nx">blockText</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\$/g</span><span class="p">,</span><span class="s2">&quot;$$$$&quot;</span><span class="p">);</span> <span class="c1">// Escape any dollar signs</span>
+      <span class="nx">grafsOut</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">=</span> <span class="nx">grafsOut</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~K\d+K/</span><span class="p">,</span><span class="nx">blockText</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="nx">grafsOut</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s2">&quot;\n\n&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_EncodeAmpsAndAngles</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">// Smart processing for ampersands and angle brackets that need to be encoded.</span>
+
+  <span class="c1">// Ampersand-encoding based entirely on Nat Irons&#39;s Amputator MT plugin:</span>
+  <span class="c1">//   http://bumppo.net/projects/amputator/</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&amp;(?!#?[xX]?(?:[0-9a-fA-F]+|\w+);)/g</span><span class="p">,</span><span class="s2">&quot;&amp;amp;&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Encode naked &lt;&#39;s</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;(?![a-z\/?\$!])/gi</span><span class="p">,</span><span class="s2">&quot;&amp;lt;&quot;</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_EncodeBackslashEscapes</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">//   Parameter:  String.</span>
+<span class="c1">//   Returns: The string, with after processing the following backslash</span>
+<span class="c1">//         escape sequences.</span>
+<span class="c1">//</span>
+
+  <span class="c1">// attacklab: The polite way to do this is with the new</span>
+  <span class="c1">// escapeCharacters() function:</span>
+  <span class="c1">//</span>
+  <span class="c1">//  text = escapeCharacters(text,&quot;\\&quot;,true);</span>
+  <span class="c1">//  text = escapeCharacters(text,&quot;`*_{}[]()&gt;#+-.!&quot;,true);</span>
+  <span class="c1">//</span>
+  <span class="c1">// ...but we&#39;re sidestepping its use of the (slow) RegExp constructor</span>
+  <span class="c1">// as an optimization for Firefox.  This function gets called a LOT.</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\\(\\)/g</span><span class="p">,</span><span class="nx">escapeCharacters_callback</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\\([`*_{}\[\]()&gt;#+-.!])/g</span><span class="p">,</span><span class="nx">escapeCharacters_callback</span><span class="p">);</span>
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_DoAutoLinks</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;((https?|ftp|dict):[^&#39;&quot;&gt;\s]+)&gt;/gi</span><span class="p">,</span><span class="s2">&quot;&lt;a href=\&quot;$1\&quot;&gt;$1&lt;/a&gt;&quot;</span><span class="p">);</span>
+
+  <span class="c1">// Email addresses: &lt;address@domain.foo&gt;</span>
+
+  <span class="cm">/*</span>
+<span class="cm">    text = text.replace(/</span>
+<span class="cm">      &lt;</span>
+<span class="cm">      (?:mailto:)?</span>
+<span class="cm">      (</span>
+<span class="cm">        [-.\w]+</span>
+<span class="cm">        \@</span>
+<span class="cm">        [-a-z0-9]+(\.[-a-z0-9]+)*\.[a-z]+</span>
+<span class="cm">      )</span>
+<span class="cm">      &gt;</span>
+<span class="cm">    /gi, _DoAutoLinks_callback());</span>
+<span class="cm">  */</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;(?:mailto:)?([-.\w]+\@[-a-z0-9]+(\.[-a-z0-9]+)*\.[a-z]+)&gt;/gi</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="nx">_EncodeEmailAddress</span><span class="p">(</span> <span class="nx">_UnescapeSpecialChars</span><span class="p">(</span><span class="nx">m1</span><span class="p">)</span> <span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_EncodeEmailAddress</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">addr</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">//  Input: an email address, e.g. &quot;foo@example.com&quot;</span>
+<span class="c1">//</span>
+<span class="c1">//  Output: the email address as a mailto link, with each character</span>
+<span class="c1">//  of the address encoded as either a decimal or hex entity, in</span>
+<span class="c1">//  the hopes of foiling most address harvesting spam bots. E.g.:</span>
+<span class="c1">//</span>
+<span class="c1">//  &lt;a href=&quot;&amp;#x6D;&amp;#97;&amp;#105;&amp;#108;&amp;#x74;&amp;#111;:&amp;#102;&amp;#111;&amp;#111;&amp;#64;&amp;#101;</span>
+<span class="c1">//     x&amp;#x61;&amp;#109;&amp;#x70;&amp;#108;&amp;#x65;&amp;#x2E;&amp;#99;&amp;#111;&amp;#109;&quot;&gt;&amp;#102;&amp;#111;&amp;#111;</span>
+<span class="c1">//     &amp;#64;&amp;#101;x&amp;#x61;&amp;#109;&amp;#x70;&amp;#108;&amp;#x65;&amp;#x2E;&amp;#99;&amp;#111;&amp;#109;&lt;/a&gt;</span>
+<span class="c1">//</span>
+<span class="c1">//  Based on a filter by Matthew Wickline, posted to the BBEdit-Talk</span>
+<span class="c1">//  mailing list: &lt;http://tinyurl.com/yu7ue&gt;</span>
+<span class="c1">//</span>
+
+  <span class="c1">// attacklab: why can&#39;t javascript speak hex?</span>
+  <span class="kd">function</span> <span class="nx">char2hex</span><span class="p">(</span><span class="nx">ch</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">hexDigits</span> <span class="o">=</span> <span class="s1">&#39;0123456789ABCDEF&#39;</span><span class="p">;</span>
+    <span class="kd">var</span> <span class="nx">dec</span> <span class="o">=</span> <span class="nx">ch</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">(</span><span class="nx">hexDigits</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="nx">dec</span><span class="o">&gt;&gt;</span><span class="mi">4</span><span class="p">)</span> <span class="o">+</span> <span class="nx">hexDigits</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="nx">dec</span><span class="o">&amp;</span><span class="mi">15</span><span class="p">));</span>
+  <span class="p">}</span>
+
+  <span class="kd">var</span> <span class="nx">encode</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">ch</span><span class="p">){</span><span class="k">return</span> <span class="s2">&quot;&amp;#&quot;</span><span class="o">+</span><span class="nx">ch</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;;&quot;</span><span class="p">;},</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">ch</span><span class="p">){</span><span class="k">return</span> <span class="s2">&quot;&amp;#x&quot;</span><span class="o">+</span><span class="nx">char2hex</span><span class="p">(</span><span class="nx">ch</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;;&quot;</span><span class="p">;},</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">ch</span><span class="p">){</span><span class="k">return</span> <span class="nx">ch</span><span class="p">;}</span>
+  <span class="p">];</span>
+
+  <span class="nx">addr</span> <span class="o">=</span> <span class="s2">&quot;mailto:&quot;</span> <span class="o">+</span> <span class="nx">addr</span><span class="p">;</span>
+
+  <span class="nx">addr</span> <span class="o">=</span> <span class="nx">addr</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/./g</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">ch</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">ch</span> <span class="o">==</span> <span class="s2">&quot;@&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// this *must* be encoded. I insist.</span>
+      <span class="nx">ch</span> <span class="o">=</span> <span class="nx">encode</span><span class="p">[</span><span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">(</span><span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">()</span><span class="o">*</span><span class="mi">2</span><span class="p">)](</span><span class="nx">ch</span><span class="p">);</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">ch</span> <span class="o">!=</span><span class="s2">&quot;:&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// leave &#39;:&#39; alone (to spot mailto: later)</span>
+      <span class="kd">var</span> <span class="nx">r</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">random</span><span class="p">();</span>
+      <span class="c1">// roughly 10% raw, 45% hex, 45% dec</span>
+      <span class="nx">ch</span> <span class="o">=</span>  <span class="p">(</span>
+          <span class="nx">r</span> <span class="o">&gt;</span> <span class="p">.</span><span class="mi">9</span>  <span class="o">?</span> <span class="nx">encode</span><span class="p">[</span><span class="mi">2</span><span class="p">](</span><span class="nx">ch</span><span class="p">)</span>   <span class="o">:</span>
+          <span class="nx">r</span> <span class="o">&gt;</span> <span class="p">.</span><span class="mi">45</span> <span class="o">?</span> <span class="nx">encode</span><span class="p">[</span><span class="mi">1</span><span class="p">](</span><span class="nx">ch</span><span class="p">)</span>   <span class="o">:</span>
+                <span class="nx">encode</span><span class="p">[</span><span class="mi">0</span><span class="p">](</span><span class="nx">ch</span><span class="p">)</span>
+        <span class="p">);</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="nx">ch</span><span class="p">;</span>
+  <span class="p">});</span>
+
+  <span class="nx">addr</span> <span class="o">=</span> <span class="s2">&quot;&lt;a href=\&quot;&quot;</span> <span class="o">+</span> <span class="nx">addr</span> <span class="o">+</span> <span class="s2">&quot;\&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">addr</span> <span class="o">+</span> <span class="s2">&quot;&lt;/a&gt;&quot;</span><span class="p">;</span>
+  <span class="nx">addr</span> <span class="o">=</span> <span class="nx">addr</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&quot;&gt;.+:/g</span><span class="p">,</span><span class="s2">&quot;\&quot;&gt;&quot;</span><span class="p">);</span> <span class="c1">// strip the mailto: from the visible part</span>
+
+  <span class="k">return</span> <span class="nx">addr</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_UnescapeSpecialChars</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Swap back in all the special characters we&#39;ve hidden.</span>
+<span class="c1">//</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~E(\d+)E/g</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">charCodeToReplace</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">m1</span><span class="p">);</span>
+      <span class="k">return</span> <span class="nb">String</span><span class="p">.</span><span class="nx">fromCharCode</span><span class="p">(</span><span class="nx">charCodeToReplace</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">_Outdent</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">//</span>
+<span class="c1">// Remove one level of line-leading tabs or spaces</span>
+<span class="c1">//</span>
+
+  <span class="c1">// attacklab: hack around Konqueror 3.5.4 bug:</span>
+  <span class="c1">// &quot;----------bug&quot;.replace(/^-/g,&quot;&quot;) == &quot;bug&quot;</span>
+
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^(\t|[ ]{1,4})/gm</span><span class="p">,</span><span class="s2">&quot;~0&quot;</span><span class="p">);</span> <span class="c1">// attacklab: g_tab_width</span>
+
+  <span class="c1">// attacklab: clean up hack</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~0/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">_Detab</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span> <span class="p">{</span>
+<span class="c1">// attacklab: Detab&#39;s completely rewritten for speed.</span>
+<span class="c1">// In perl we could fix it by anchoring the regexp with \G.</span>
+<span class="c1">// In javascript we&#39;re less fortunate.</span>
+
+  <span class="c1">// expand first n-1 tabs</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\t(?=\t)/g</span><span class="p">,</span><span class="s2">&quot;    &quot;</span><span class="p">);</span> <span class="c1">// attacklab: g_tab_width</span>
+
+  <span class="c1">// replace the nth with two sentinels</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\t/g</span><span class="p">,</span><span class="s2">&quot;~A~B&quot;</span><span class="p">);</span>
+
+  <span class="c1">// use the sentinel to anchor our regex so it doesn&#39;t explode</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~B(.+?)~A/g</span><span class="p">,</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">,</span><span class="nx">m2</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">leadingText</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">;</span>
+      <span class="kd">var</span> <span class="nx">numSpaces</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">-</span> <span class="nx">leadingText</span><span class="p">.</span><span class="nx">length</span> <span class="o">%</span> <span class="mi">4</span><span class="p">;</span>  <span class="c1">// attacklab: g_tab_width</span>
+
+      <span class="c1">// there *must* be a better way to do this:</span>
+      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">&lt;</span><span class="nx">numSpaces</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="nx">leadingText</span><span class="o">+=</span><span class="s2">&quot; &quot;</span><span class="p">;</span>
+
+      <span class="k">return</span> <span class="nx">leadingText</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="c1">// clean up sentinels</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~A/g</span><span class="p">,</span><span class="s2">&quot;    &quot;</span><span class="p">);</span>  <span class="c1">// attacklab: g_tab_width</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/~B/g</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="c1">//</span>
+<span class="c1">//  attacklab: Utility functions</span>
+<span class="c1">//</span>
+
+
+<span class="kd">var</span> <span class="nx">escapeCharacters</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">text</span><span class="p">,</span> <span class="nx">charsToEscape</span><span class="p">,</span> <span class="nx">afterBackslash</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// First we have to escape the escape characters so that</span>
+  <span class="c1">// we can build a character class out of them</span>
+  <span class="kd">var</span> <span class="nx">regexString</span> <span class="o">=</span> <span class="s2">&quot;([&quot;</span> <span class="o">+</span> <span class="nx">charsToEscape</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/([\[\]\\])/g</span><span class="p">,</span><span class="s2">&quot;\\$1&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;])&quot;</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="nx">afterBackslash</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">regexString</span> <span class="o">=</span> <span class="s2">&quot;\\\\&quot;</span> <span class="o">+</span> <span class="nx">regexString</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="kd">var</span> <span class="nx">regex</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="nx">regexString</span><span class="p">,</span><span class="s2">&quot;g&quot;</span><span class="p">);</span>
+  <span class="nx">text</span> <span class="o">=</span> <span class="nx">text</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">regex</span><span class="p">,</span><span class="nx">escapeCharacters_callback</span><span class="p">);</span>
+
+  <span class="k">return</span> <span class="nx">text</span><span class="p">;</span>
+<span class="p">}</span>
+
+
+<span class="kd">var</span> <span class="nx">escapeCharacters_callback</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">wholeMatch</span><span class="p">,</span><span class="nx">m1</span><span class="p">)</span> <span class="p">{</span>
+  <span class="kd">var</span> <span class="nx">charCodeToEscape</span> <span class="o">=</span> <span class="nx">m1</span><span class="p">.</span><span class="nx">charCodeAt</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+  <span class="k">return</span> <span class="s2">&quot;~E&quot;</span><span class="o">+</span><span class="nx">charCodeToEscape</span><span class="o">+</span><span class="s2">&quot;E&quot;</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="p">}</span> <span class="c1">// end of Showdown.converter</span>
+
+<span class="nx">exports</span><span class="p">.</span><span class="nx">Showdown</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Showdown</span><span class="p">.</span><span class="nx">converter</span><span class="p">();</span>
+</pre></div></td></tr></tbody></table></div></body></html>
