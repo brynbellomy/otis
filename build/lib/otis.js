@@ -526,6 +526,8 @@ exports.Otis = (function() {
     async.forEachSeries(codeLines, function(line, forEachCb) {
       var matchable;
       matchable = line.replace(/(["'])(?:\\.|(?!\1).)*\1/g, "");
+      console.log("MATCHABLE::" + matchable + "::");
+      console.log("MATCHABLE REPLACE::" + (matchable.replace(/\s*/, "").replace(params.multiLine[0], "")) + "::");
       if (params.multiLine) {
         if (inMultiLineComment) {
           if (line.match(params.multiLine[1])) {
@@ -701,7 +703,7 @@ exports.Otis = (function() {
       executables: ["clang", "gcc"],
       dox: true,
       comment: "//",
-      multiLine: [/\/\*/, /\*\//]
+      multiLine: [/\/\*\*?/, /\*\//]
     },
     cpp: {
       extensions: ["cc", "cpp"],

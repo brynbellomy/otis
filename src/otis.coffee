@@ -631,7 +631,7 @@ class exports.Otis
       executables: ["clang", "gcc"]
       dox: true
       comment: "//"
-      multiLine: [/\/\*/, /\*\//]
+      multiLine: [/\/\*\*?/, /\*\//]
 
     cpp:
       extensions: ["cc", "cpp"]
