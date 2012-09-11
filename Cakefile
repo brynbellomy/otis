@@ -338,7 +338,7 @@ install = (install_phase_cb) ->
         filename = path.join root, fileStats.name
         linkname = path.join SYSTEM_BIN_DIR, fileStats.name
         async.series [
-            ((seriesCb) -> log_subphase 2, "rm #{linkname}", seriesCb)
+            ((seriesCb) -> log_subphase 2, "rm #{linkname}".magenta, seriesCb)
             ((seriesCb) -> child_process.exec "rm '#{linkname}'", (err, stdout, stderr) -> seriesCb null), # ignore errors here
             ((seriesCb) -> log_subphase 2, linkname.magenta.bold + " -> ".cyan + filename.blue.bold)
             ((seriesCb) -> child_process.exec "ln -s '#{filename}' '#{linkname}'", seriesCb),
