@@ -49,8 +49,9 @@ class exports.Otis
   - `tplEngine`
   - `tplExtension`
   - `markdownEngine`
-  - `colourScheme`
+  - `colorScheme`
   - `css`
+  - `index`
   - `tolerant`
   - `onlyUpdated`
   - `ignoreHidden`
@@ -78,6 +79,7 @@ class exports.Otis
       markdownEngine: "marked"
       colourScheme: "default"
       css: []
+      index: null
       tolerant: false
       onlyUpdated: false
       ignoreHidden: false
@@ -101,6 +103,7 @@ class exports.Otis
     @onlyUpdated    = !!opts.onlyUpdated
     @colourScheme   = opts.colourScheme
     @css            = opts.css
+    @index          = opts.index
     @tolerant       = !!opts.tolerant
     @ignoreHidden   = !!opts.ignoreHidden
     @sidebarState   = opts.sidebarState
@@ -993,6 +996,7 @@ class exports.Otis
     outPath_docScriptJS   = path.join @outDir, "doc-script.js"
     outPath_filelistJS    = path.join @outDir, "doc-filelist.js"
     outPath_CSS           = path.join @outDir, "doc-style.css"
+    outPath_indexHTML     = path.join @outDir, "index.html"
 
     log = (msg, cb) =>
       console.log msg
@@ -1004,6 +1008,11 @@ class exports.Otis
       readColorschemeCSS: (cb, results) => fs.readFile inPath_colorSchemeCSS, cb
       genPygmentsCSS:     (cb, results) => exec "pygmentize -S #{@colourScheme} -f html -a 'body .highlight'", (code, stdout, stderr) => cb stderr, stdout
       readUserCSS:        (cb, results) => async.map @css, ((file, mapCb) => fs.readFile(path.resolve(file), mapCb)), cb
+
+      renderIndexPage:     (cb, results) => if @index? then @render("index.html", { destination: @index.toString() }, cb) else cb null
+
+      writeIndexPage:     [ "renderIndexPage"
+        (cb, results) => if @index? then @writeFileIfDifferent(outPath_indexHTML, results.renderIndexPage, cb) else cb null ]
 
       writeFilelistJS:    (cb, results) =>
         @writeFileIfDifferent outPath_filelistJS, "var tree=#{ JSON.stringify @tree };", => log "Saved file tree to doc-filelist.js", => cb null

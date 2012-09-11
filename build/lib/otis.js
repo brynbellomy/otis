@@ -8,13 +8,13 @@ A highly customizable, extremely simple documentation generator based on
 - [mbrevoort / **docco-husky**](https://github.com/mbrevoort/docco-husky)
 - [jbt / **docker**](http://jbt.github.com/docker)
 
-**otis** was once a really simple documentation generator -- **docker**.  **docker** originally
+__otis__ was once a really simple documentation generator -- **docker**.  **docker** originally
 started out as a pure-javascript port of **docco**, but eventually gained many extra little features
 that somewhat break docco's philosophy of being a quick-and-dirty thing.
 
-**docker** was based on **docco**'s coffeescript source, but converted to javascript.
+__docker__ was based on **docco**'s coffeescript source, but converted to javascript.
 
-**otis** is based on **docker**, but has been re-converted to coffeescript.
+__otis__ is based on **docker**, but has been re-converted to coffeescript.
 
 especially given that some of the conversion was made using the fantastic (but not infallible)
 (http://js2coffee.org), you might notice some strange code artifacts here and there -- javascript-isms
@@ -56,8 +56,9 @@ exports.Otis = (function() {
   - `tplEngine`
   - `tplExtension`
   - `markdownEngine`
-  - `colourScheme`
+  - `colorScheme`
   - `css`
+  - `index`
   - `tolerant`
   - `onlyUpdated`
   - `ignoreHidden`
@@ -138,6 +139,7 @@ exports.Otis = (function() {
       markdownEngine: "marked",
       colourScheme: "default",
       css: [],
+      index: null,
       tolerant: false,
       onlyUpdated: false,
       ignoreHidden: false,
@@ -161,6 +163,7 @@ exports.Otis = (function() {
     this.onlyUpdated = !!opts.onlyUpdated;
     this.colourScheme = opts.colourScheme;
     this.css = opts.css;
+    this.index = opts.index;
     this.tolerant = !!opts.tolerant;
     this.ignoreHidden = !!opts.ignoreHidden;
     this.sidebarState = opts.sidebarState;
@@ -337,7 +340,7 @@ exports.Otis = (function() {
   };
 
   /*!
-  ## addFileToFree
+  ## addFileToTree
   
   Adds a file to the file tree to show in the sidebar. This used to be in `queueFile` but
   since we're now only deciding whether or not the file can be included at the point of
@@ -1040,13 +1043,14 @@ exports.Otis = (function() {
 
 
   Otis.prototype.copySharedResources = function() {
-    var async, inPath_colorSchemeCSS, inPath_scriptJS, log, outPath_CSS, outPath_docScriptJS, outPath_filelistJS,
+    var async, inPath_colorSchemeCSS, inPath_scriptJS, log, outPath_CSS, outPath_docScriptJS, outPath_filelistJS, outPath_indexHTML,
       _this = this;
     inPath_scriptJS = path.join(path.dirname(__filename), "..", "res", "script.js");
     inPath_colorSchemeCSS = path.join(path.dirname(__filename), "..", "res", "css", "" + this.colourScheme + ".css");
     outPath_docScriptJS = path.join(this.outDir, "doc-script.js");
     outPath_filelistJS = path.join(this.outDir, "doc-filelist.js");
     outPath_CSS = path.join(this.outDir, "doc-style.css");
+    outPath_indexHTML = path.join(this.outDir, "index.html");
     log = function(msg, cb) {
       console.log(msg);
       return cb(null);
@@ -1069,6 +1073,24 @@ exports.Otis = (function() {
           return fs.readFile(path.resolve(file), mapCb);
         }), cb);
       },
+      renderIndexPage: function(cb, results) {
+        if (_this.index != null) {
+          return _this.render("index.html", {
+            destination: _this.index.toString()
+          }, cb);
+        } else {
+          return cb(null);
+        }
+      },
+      writeIndexPage: [
+        "renderIndexPage", function(cb, results) {
+          if (_this.index != null) {
+            return _this.writeFileIfDifferent(outPath_indexHTML, results.renderIndexPage, cb);
+          } else {
+            return cb(null);
+          }
+        }
+      ],
       writeFilelistJS: function(cb, results) {
         return _this.writeFileIfDifferent(outPath_filelistJS, "var tree=" + (JSON.stringify(_this.tree)) + ";", function() {
           return log("Saved file tree to doc-filelist.js", function() {

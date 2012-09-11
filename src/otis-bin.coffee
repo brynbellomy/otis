@@ -79,6 +79,7 @@ optimist = require("optimist")
   .alias("u", "onlyUpdated")   .describe("u", "Only process files that have been changed")                   .default("u", localJSConfig.onlyUpdated)
   .alias("c", "colourScheme")  .describe("c", "Color scheme to use (as in pygmentize -L styles)")            .default("c", localJSConfig.colourScheme)
   .alias("y", "css")           .describe("y", "CSS file to include after pygments CSS (you can specify this flag multiple times)").default("y", localJSConfig.css ? [])
+  .alias("X", "index")         .describe("X", "Output an index.html page that instantly redirects to the specified file.").default("X", localJSConfig.index ? null)
   .alias("T", "tolerant")      .describe("T", "Will parse comments without a leading ! (ex: \"/**! ...\")")  .default("T", localJSConfig.tolerant ? false).boolean("T")
   .alias("w", "watch")         .describe("w", "Watch on the input directory for file changes (experimental)").default("w", localJSConfig.watch).boolean("w")
   .alias("I", "ignoreHidden")  .describe("I", "Ignore hidden files and directories (starting with . or _)")  .default("I", localJSConfig.ignoreHidden).boolean("I")
@@ -111,6 +112,7 @@ fields = [
   "onlyUpdated",
   "colourScheme",
   "css",
+  "index",
   "tolerant",
   "ignoreHidden",
   "sidebarState",
