@@ -8,122 +8,112 @@
 # * docs      - generates annotated documentation using **[otis](http://github.com/brynbellomy/otis)**
 # * clean     - deletes the build products folder
 
-MODULE_NAME    = 'otis'
-SRC_DIR        = 'src'
-BUILD_DIR      = 'build'
-LIB_DIR        = 'lib'
-BIN_DIR        = 'bin'
-RES_DIR        = 'res'
+MODULE_NAME    = "otis"
+SRC_DIR        = "src"
+BUILD_DIR      = "build"
+LIB_DIR        = "lib"
+BIN_DIR        = "bin"
+RES_DIR        = "res"
 INSTALL_PATH   = "/usr/local/lib/node_modules/#{ MODULE_NAME }"
 SYSTEM_BIN_DIR = "/usr/local/bin"
+pkgFiles       = ["package.json"]
+pkgDirs        = ["node_modules"]
 
+if MODULE_NAME is "YOUR MODULE NAME" then throw new Error "You need to provide a value for the MODULE_NAME variable in your Cakefile."
+
+#
+#! required module dependencies
+#
+fs            = require "fs"
+async         = require "async"
+walk          = require "walk"
+mkdirp        = require "mkdirp"
+path          = require "path"
+child_process = require "child_process"
+{print}       = require "util"
+{spawn, exec} = require "child_process"
+
+#
+#! optional module dependencies
+#
 try
   require "colors"
 catch err
   console.log "*** Life would be a lot better if you would just type \"npm install -g colors\"..."
-  for color in ["red", "green", "grey", "magenta", "bold", "underline", "blue", "cyan", "yellow"]
+  for color in ["red", "green", "grey", "magenta", "bold", "underline", "blue", "cyan", "blue.bold"]
     String::__defineGetter__ color, () -> @toString()
 
-if MODULE_NAME is "YOUR MODULE NAME" then throw new Error "You need to provide a value for the MODULE_NAME variable in your Cakefile.".red
-
-fs = require 'fs'
-async = require 'async'
-{print} = require 'util'
-{spawn, exec} = require 'child_process'
-
-try
-  which = require('which').sync
-catch err
-  which = null
+which =
+  try require("which").sync
+  catch err
+    null
 
 
-task 'docs', 'generate documentation', -> otis                    -> do all_tasks_successful
-task 'build', 'compile source', -> build -> arrangeBuildDirAndChmod -> do all_tasks_successful
-task 'install', 'install built library', -> install                 -> do all_tasks_successful
-task 'uninstall', 'uninstall built library', -> uninstall           -> do all_tasks_successful
-task 'watch', 'compile and watch', -> build true,                   -> do all_tasks_successful
-task 'test', 'run tests', -> build -> mocha                         -> do all_tasks_successful
-task 'clean', 'clean generated files', -> clean                     -> do all_tasks_successful
-
-
-
-
-class PriorityMatrixRunner
-  ops: {}
-
-  constructor: (@priorities = [], @ops = {}) ->
-
-
-  add_op: (priority, fn) =>
-    @ops[priority] ?= []
-    @ops[priority].push fn
-
-  run: (run_cb) =>
-    priority_matrix = {}
-    first = yes
-    previous = null
-
-    for priority in @priorities
-      priority_ops = @ops[ priority ]
-      if priority_ops?
-        __previous = previous
-        do (priority, priority_ops, __previous) =>
-          if first then priority_matrix[priority] =               (cb) -> fn(cb) for fn in priority_ops
-          else          priority_matrix[priority] = [ __previous, (cb) -> fn(cb) for fn in priority_ops ]
-          first = no
-          previous = priority
-
-    async.auto priority_matrix, (err, results) -> run_cb err, results
-
-
-
-
-# Internal Functions
-
-# ## *all_tasks_successful*
 #
+#! tasks
+#
+task "docs", "generate documentation", -> otis                      -> do all_tasks_successful
+task "build", "compile source", -> build -> arrangeBuildDirAndChmod -> do all_tasks_successful
+task "install", "install built library", -> install                 -> do all_tasks_successful
+task "uninstall", "uninstall built library", -> uninstall           -> do all_tasks_successful
+task "watch", "compile and watch", -> build true,                   -> do all_tasks_successful
+task "test", "run tests", -> build -> mocha                         -> do all_tasks_successful
+task "clean", "clean generated files", -> clean                     -> do all_tasks_successful
+
+
+#
+#! calculate some paths we're gonna need
+#
+build_paths = 
+  bin: path.join "./", BUILD_DIR, BIN_DIR
+  lib: path.join "./", BUILD_DIR, LIB_DIR
+  res: path.join "./", BUILD_DIR, RES_DIR
+
+install_paths =
+  lib: path.join INSTALL_PATH, LIB_DIR
+  bin: path.join INSTALL_PATH, BIN_DIR
+  res: path.join INSTALL_PATH, RES_DIR
+
+
+###!
+# Internal Functions
+###
+
+###!
+## all_tasks_successful
+###
 all_tasks_successful = ->
   console.log "\n\n[".white + " ALL DONE ENJOY THE FUTURE ".rainbow.bold + "]\n\n".white
 
-log_phase = (msg) -> console.log "+".white.bold + " #{msg} ".red + "->".white.bold
+
+
+###!
+## log_phase
+###
+log_phase = (msg) -> console.log "// --".white.bold + " #{msg} ".red + "->".white.bold
+
+
+
+###!
+## log_subphase
+###
 log_subphase = (num, msg, cb) ->
   prefix = Array(num + 2).join("  ")
   console.log "#{prefix}#{msg}"
   if cb then cb null
 
-# ## *walk* 
-#
-# **given** string as dir which represents a directory in relation to local directory
-# **and** callback as done in the form of (err, results)
-# **then** recurse through directory returning an array of files
-walk = (dir, done) ->
-  results = []
-  fs.readdir dir, (err, list) ->
-    return done(err, []) if err
-    pending = list.length
-    return done(null, results) unless pending
-    for name in list
-      file = "#{dir}/#{name}"
-      try
-        stat = fs.statSync file
-      catch err
-        stat = null
-      if stat?.isDirectory()
-        walk file, (err, res) ->
-          results.push name for name in res
-          done(null, results) unless --pending
-      else
-        results.push file
-        done(null, results) unless --pending
 
-# ## *launch*
-#
-# **given** string as a cmd
-# **and** optional array and option flags
-# **and** optional callback
-# **then** spawn cmd with options
-# **and** pipe to process stdout and stderr respectively
-# **and** on child process exit emit callback if set and status is 0
+###!
+## launch
+
+- spawn cmd with options
+- pipe to process stdout and stderr respectively
+- on child process exit emit callback if set and status is 0
+
+@param cmd {String}
+@param options {Array}
+@param callback {Function}
+###
 launch = (cmd, options = [], callback) ->
   cmd = which(cmd) if which
   app = spawn cmd, options
@@ -131,12 +121,16 @@ launch = (cmd, options = [], callback) ->
   app.stderr.pipe(process.stderr)
   app.on "exit", (status) -> callback?(if status is 0 then null else status) # if status is 0
 
-# ## *build*
-#
-# **given** optional boolean as watch
-# **and** optional function as callback
-# **then** invoke launch passing coffee command
-# **and** defaulted options to compile src to lib
+
+
+###!
+## build
+
+**given** optional boolean as watch
+**and** optional function as callback
+**then** invoke launch passing coffee command
+**and** defaulted options to compile src to lib
+###
 build = (watch, callback) ->
   log_phase "compiling coffeescript"
 
@@ -174,22 +168,13 @@ unlinkIfCoffeeFile = (file) ->
 clean = (callback) ->
   log_phase "cleaning built products directory"
 
-  fs            = require "fs"
-  child_process = require "child_process"
-  path          = require "path"
-  dir           = path.join "./", BUILD_DIR
+  dir = path.join "./", BUILD_DIR
 
   if fs.existsSync dir then child_process.exec "rm -rf #{dir}", (err, stdout, stderr) ->
     if not err then log_subphase 0, "clean successful".cyan
     else log_subphase 0, "error during clean: \"#{err}\"".red
 
   else log_subphase 0, "nothing to clean.".cyan
-
-  # rmdirIfExists = (dir) ->
-  #   dir = path.resolve(path.join "./", dir)
-  #   if fs.existsSync dir then child_process.exec "rm -rf #{dir}"
-  
-  # for file in [ BUILD_DIR,  ]
 
 
 
@@ -221,23 +206,25 @@ mocha = (options, callback) ->
   
   launch 'mocha', options, callback
 
+
+
 # ## *otis*
 #
 # **given** optional function as callback
 # **then** invoke launch passing otis command
 otis = (callback) ->
-  log_phase "launching otis"
-  launch "otis", ->
-    log_subphase 0, "otis is finished.".cyan
-    callback null
+  log_phase "launching #{"otis".bold} doc generator"
+  launch "otis", -> log_subphase 0, "otis is finished.".cyan, -> callback null
 
 
+
+
+# ## *arrangeBuildDirAndChmod*
+#
+# **given** optional function as callback
 arrangeBuildDirAndChmod = (cb) ->
   log_phase "chmodding executables and arranging build dir"
 
-  path   = require "path"
-  mkdirp = require "mkdirp"
-  walk   = require "walk"
   walker = walk.walk "./#{ SRC_DIR }"
 
   walker.on "file", (root, fileStats, next) =>
@@ -261,18 +248,19 @@ arrangeBuildDirAndChmod = (cb) ->
 
           # remove the .js ending, also remove -bin prefix if it's found
           js_newpath = js_newpath.replace(/-bin\.js$/, "").replace(/\.js$/, "")
-          log_subphase 0, "#{js_oldname} ".yellow + "//".white.bold + " Assuming executable (found shebang line).".yellow
-          log_subphase 1, "  -- Moving to #{js_newpath}".yellow
+          log_subphase 1, "#{js_oldname} ".blue.bold + "//".white.bold + " assuming executable (found shebang line).".blue.bold
+          log_subphase 2, "-".white.bold + " compiling...".blue.bold
+          log_subphase 2, "-".white.bold + " moving to #{js_newpath.bold}".blue.bold
           fs.renameSync js_fullpath, js_newpath
 
           # chmod 755
+          log_subphase 2, "-".white.bold + " chmodding #{js_newpath} to #{"0o755".bold}".blue.bold
           fs.chmodSync js_newpath, 0o755
 
           js_fileContents = (fs.readFileSync js_newpath).toString()
           js_fileContents = "#!/usr/bin/env node\n\n#{js_fileContents}"
           fs.writeFileSync js_newpath, js_fileContents, "utf8"
 
-          log_subphase 1, "  -- Chmodding #{js_newpath} to 0o755".yellow
           return next()
 
     # otherwise it must be a lib file
@@ -280,8 +268,9 @@ arrangeBuildDirAndChmod = (cb) ->
     js_fullpath = path.join "./", BUILD_DIR, fileStats.name.replace(".coffee", ".js")
     js_newpath  = path.join(path.dirname(js_fullpath), LIB_DIR, path.basename(js_fullpath))
     mkdirp.sync path.dirname(js_newpath)
-    log_subphase 0, "#{js_oldname} ".magenta + "//".white.bold + " Assuming library file.".magenta
-    log_subphase 1, "  -- Compiling and moving to #{js_newpath}".magenta
+    log_subphase 1, "#{js_oldname} ".magenta + "//".white.bold + " assuming library file.".magenta
+    log_subphase 2, "-".white.bold + " compiling...".magenta
+    log_subphase 2, "-".white.bold + " moving to #{js_newpath.bold}".magenta
     fs.renameSync js_fullpath, js_newpath
 
     next()
@@ -301,66 +290,80 @@ arrangeBuildDirAndChmod = (cb) ->
 
 
 
-install = (cb) ->
+install = (install_phase_cb) ->
   log_phase "installing built products"
 
-  mkdirp        = require "mkdirp"
-  path          = require "path"
-  child_process = require "child_process"
+  stages =
+    printPaths: []
+    printRemoveOp: []
+    rm: []
+    mkdir: []
+    printCp: []
+    cp: []
+    cpPkgFiles: []
+    cpPkgDirs: []
+    symlink: []
 
-  build_bin = path.join "./", BUILD_DIR, BIN_DIR
-  build_lib = path.join "./", BUILD_DIR, LIB_DIR
-  build_res = path.join "./", BUILD_DIR, RES_DIR
-  # mkdirp.sync build_bin
-  # mkdirp.sync build_lib
-
-  install_paths =
-    lib: path.join INSTALL_PATH, LIB_DIR
-    bin: path.join INSTALL_PATH, BIN_DIR
-    res: path.join INSTALL_PATH, RES_DIR
-
-  matrix = new PriorityMatrixRunner [ "priority_printPaths", "priority_printRemoveOp", "priority_rm", "priority_mkdir" ]
-
-  for name, the_path of install_paths
+  stages.printRemoveOp.push ((cb) -> log_subphase 1, "removing...".cyan, cb)
+  stages.printCp.push       ((cb) -> log_subphase 1, "copying...".cyan, cb)
+  for name, the_path of install_paths when install_paths.hasOwnProperty name
     do (name, the_path) ->
-      matrix.add_op "priority_printPaths", (cb) -> log_subphase 0, "#{name} path: ".cyan + "#{the_path}".yellow, cb
+      stages.printPaths.push    ((cb) -> log_subphase 1, "#{name} = ".cyan + "#{the_path}".blue.bold, cb)
+      stages.printRemoveOp.push ((cb) -> log_subphase 2, "#{the_path}".magenta, cb)   if fs.existsSync the_path
+      stages.rm.push            ((cb) -> child_process.exec "rm -rf #{the_path}", cb) if fs.existsSync the_path
+      stages.mkdir.push         ((cb) -> mkdirp the_path, cb)
+      stages.printCp.push       ((cb) -> log_subphase 2, mkCopyMsg("#{build_paths[name]}/*", "#{install_paths[name]}/"), cb)
+      stages.cp.push            ((cb) -> child_process.exec "cp -R '#{build_paths[name]}/' '#{install_paths[name]}'", cb)
 
-      if fs.existsSync the_path
-        matrix.add_op "priority_printRemoveOp", (cb) -> log_subphase 0, "Removing ".cyan + "#{the_path}".yellow, cb
-        matrix.add_op "priority_rm",            (cb) -> child_process.exec "rm -rf #{the_path}", (err, stdout, stderr) -> cb err
-        matrix.add_op "priority_mkdir",         (cb) -> mkdirp the_path, cb
+  mkCopyMsg = (from, to) -> "#{from}".magenta + " -> ".cyan + "#{to}".magenta.bold
 
-  matrix.run (err) ->
-    # copy everything into /usr/local/lib/node_modules/{MODULE_NAME}
-    log_subphase 0, "Copying built products into ".cyan + "#{INSTALL_PATH}".magenta
+  for file in pkgFiles
+    do (file) ->
+      file = path.join "./", file
+      stages.cpPkgFiles.push    ((cb) -> log_subphase 2, mkCopyMsg(file, path.join(INSTALL_PATH, file)), cb)
+      stages.cpPkgFiles.push    ((cb) -> child_process.exec "cp '#{file}' '#{INSTALL_PATH}/'", cb)
 
-    install_commands = [
-      "cp ./package.json '#{INSTALL_PATH}/'",
-      "cp -R ./node_modules '#{INSTALL_PATH}/'",
-      "cp -R '#{build_lib}/' '#{install_paths.lib}'",
-      "cp -R '#{build_bin}/' '#{install_paths.bin}'",
-      "cp -R '#{build_res}/' '#{install_paths.res}'"
-    ]
-    child_process.exec install_commands.join("&&"), (err, stdout, stderr) ->
-      walk = require "walk"
-      walker = walk.walkSync install_paths.bin
+  for dir in pkgDirs
+    do (dir) ->
+      dir = path.join "./", dir
+      stages.cpPkgDirs.push     ((cb) -> log_subphase 2, mkCopyMsg(dir, path.join(INSTALL_PATH, dir)), cb)
+      stages.cpPkgDirs.push     ((cb) -> child_process.exec "cp -R '#{dir}' '#{INSTALL_PATH}/'", cb)
 
-      # create symlinks for the binaries
-      walker.on "file", (root, fileStats, next) =>
+  # create symlinks for the binaries
+  stages.symlink.push (stageCb) ->
+    log_subphase 1, "symlinking executables in ".cyan + install_paths.bin.magenta + "...".cyan, ->
+      walker = require("walk").walk install_paths.bin
+      walker.on "end", -> stageCb null
+      walker.on "file", (root, fileStats, next) ->
         filename = path.join root, fileStats.name
         linkname = path.join SYSTEM_BIN_DIR, fileStats.name
-        log_subphase 0, "Linking executable: ".cyan + "(ln -s #{filename} ".yellow + "#{linkname}".magenta + ")".yellow
-        child_process.exec "rm '#{linkname}' && ln -s '#{filename}' '#{linkname}'"
-        next()
+        async.series [
+            ((seriesCb) -> log_subphase 2, "rm #{linkname}", seriesCb)
+            ((seriesCb) -> child_process.exec "rm '#{linkname}'", (err, stdout, stderr) -> seriesCb null), # ignore errors here
+            ((seriesCb) -> log_subphase 2, linkname.magenta.bold + " -> ".cyan + filename.blue.bold)
+            ((seriesCb) -> child_process.exec "ln -s '#{filename}' '#{linkname}'", seriesCb),
+          ],
+          (err, results) ->
+            if err then console.log err.toString().red
+            next()
 
-      walker.on "end", -> cb null
+  runStagedAuto stages, (err, results) -> install_phase_cb err, null
+
+runStagedAuto = (stages, cb) ->
+  autoObj = {}
+  prev = null
+  for stage, fn_list of stages when stages.hasOwnProperty stage
+    _prev = prev
+    do (stage, _prev) ->
+      if _prev? then autoObj[stage] = [ _prev, (stageCb, results) -> async.forEach(stages[stage], ((fn, forCb) -> fn(forCb)), stageCb) ]
+      else           autoObj[stage] = [        (stageCb, results) -> async.forEach(stages[stage], ((fn, forCb) -> fn(forCb)), stageCb) ]
+      prev = stage
+
+  async.auto autoObj, (err, results) -> install_phase_cb err, null
 
 
 
 uninstall = (cb) ->
-  fs            = require "fs"
-  child_process = require "child_process"
-
   if fs.existsSync INSTALL_PATH
     child_process.exec "rm -rf #{INSTALL_PATH}", ->
       cb null
