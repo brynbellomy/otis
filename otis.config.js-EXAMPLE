@@ -3,7 +3,7 @@
 module.exports = {
   inDir: "./my-proj-subfolder-with-src-files",
   outDir: "./doc",
-  tplDir: "/Users/bryn/.docker/templates",
+  tplDir: require("path").join(process.env.HOME, ".otis", "templates"),
   tplEngine: "jade",
   tplExtension: "jade",
   onlyUpdated: false,

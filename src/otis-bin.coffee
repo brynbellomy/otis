@@ -5,7 +5,7 @@ path     = require "path"
 watchr   = require "watchr"
 fs       = require "fs"
 
-{Docker} = require "docker"
+{Otis} = require "otis"
 
 try
   require "colors"
@@ -25,18 +25,18 @@ if argv?._[0] is "use" and argv?._[1]? and argv._[1].toString().trim().length > 
 # Check for various local config file and load then in order of least-specific to most-specific
 configFilenames = []
 if configToUse?
-  homeCfg = path.join process.env.HOME, ".docker", "docker.config.#{configToUse}.js"
-  pwdCfg  = path.join pwd, "docker.config.#{configToUse}.js"
+  homeCfg = path.join process.env.HOME, ".otis", "otis.config.#{configToUse}.js"
+  pwdCfg  = path.join pwd, "otis.config.#{configToUse}.js"
   if not (fs.existsSync(homeCfg) or fs.existsSync(pwdCfg))
     console.log "Config #{configToUse} could not be found in ./ or ~/"
     process.exit()
   else
-    configFilenames.push path.join(process.env.HOME, ".docker", "docker.config.js")
+    configFilenames.push path.join(process.env.HOME, ".otis", "otis.config.js")
     configFilenames.push homeCfg
     configFilenames.push pwdCfg
 else
-  configFilenames.push path.join(process.env.HOME, ".docker", "docker.config.js")
-  configFilenames.push path.join(pwd, "docker.config.js")
+  configFilenames.push path.join(process.env.HOME, ".otis", "otis.config.js")
+  configFilenames.push path.join(pwd, "otis.config.js")
 
 localJSConfig = {}
 for filename in configFilenames
@@ -55,19 +55,19 @@ optimist = require("optimist")
     DOCKER
     Usage: $0 [use <config>] [options] [files to document]
 
-    When 'use <config>' is present, docker will attempt to load config files in the
+    When 'use <config>' is present, otis will attempt to load config files in the
     following order:
-        #{"~/.docker/docker.config.js".red}
-        #{"~/.docker/docker.config.<config>.js".red}
-        #{"./docker.config.<config>.js".red}
+        #{"~/.otis/otis.config.js".red}
+        #{"~/.otis/otis.config.<config>.js".red}
+        #{"./otis.config.<config>.js".red}
         ... and will bail with an error if neither of the latter two could be found.
 
-    When there is no 'use <config>' argument specified, docker will use this order
+    When there is no 'use <config>' argument specified, otis will use this order
     instead:
-        #{"~/.docker/docker.config.js".red}
-        #{"./docker.config.js".red}
+        #{"~/.otis/otis.config.js".red}
+        #{"./otis.config.js".red}
 
-    #{"~/.docker/".red} is also a great place to store your custom templates, etc. as well.
+    #{"~/.otis/".red} is also a great place to store your custom templates, etc. as well.
     """)
   .alias("U", "use")           
   .alias("i", "inDir")         .describe("i", "Input directory (defaults to current dir)")                   .default("i", localJSConfig.inDir ? pwd)
@@ -84,7 +84,7 @@ optimist = require("optimist")
   .alias("I", "ignoreHidden")  .describe("I", "Ignore hidden files and directories (starting with . or _)")  .default("I", localJSConfig.ignoreHidden).boolean("I")
   .alias("s", "sidebarState")  .describe("s", "Whether the sidebar should be open or not by default")        .default("s", localJSConfig.sidebarState ? "yes").boolean("s")
   .alias("x", "exclude")       .describe("x", "Paths to exclude")                                            .default("x", localJSConfig.exclude ? false)
-  .alias("W", "writeConfig")   .describe("W", "Write 'docker.config.js' in PWD using the options provided.") .default("W", false).boolean("W")
+  .alias("W", "writeConfig")   .describe("W", "Write 'otis.config.js' in PWD using the options provided.") .default("W", false).boolean("W")
   .alias("h", "help")          .describe("h", "Show this help text.").default("h", false).boolean("h")
   #.wrap(80) # 80-col output
 
@@ -123,21 +123,21 @@ for field in fields when typeof argv[field] isnt undefined
   opts[field] = argv[field]
   console.log field.red + ": ".white + (opts[field] ? "-").toString().grey
 
-# write a docker.config.js file if the writeConfig option was specified
+# write a otis.config.js file if the writeConfig option was specified
 if argv?.writeConfig is yes
   require("fs").writeFileSync(
-    path.join(pwd, "docker.config.js"),
+    path.join(pwd, "otis.config.js"),
     """
     module.exports = #{require('util').inspect(opts)};
     """,
     "utf8")
 
-# Create docker instance
-d = new Docker opts
+# Create otis instance
+d = new Otis opts
 
 args = argv._
 if args.length > 0
-  # make sure we remove the 'use x' args from the args list before passing to docker
+  # make sure we remove the 'use x' args from the args list before passing to otis
   newArgv = []
   i = 0
   while i < args.length

@@ -1,7 +1,7 @@
 module.exports = {
   inDir: './',
   outDir: './doc',
-  tplDir: process.HOME + '/.docker/templates',
+  tplDir: require("path").join(process.env.HOME, '.otis', 'templates'),
   tplEngine: 'jade',
   tplExtension: 'jade',
   markdownEngine: 'showdown',
@@ -10,5 +10,5 @@ module.exports = {
   tolerant: false,
   ignoreHidden: true,
   sidebarState: true,
-  exclude: 'docker.config.js,*.md,doc,node_modules,bin'
+  exclude: 'otis.config.js,*.md,doc,node_modules,bin'
 };

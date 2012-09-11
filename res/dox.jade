@@ -1,9 +1,11 @@
-mixin tag-stuff(section_name, tag)
+mixin tag-section(section_name)
   .dox_tag_title= section_name
+
+mixin tag-stuff(tag)
   .dox_tag_detail
     if tag.name
       span.name= tag.name
-    each type in tag.types
+    each type in (tag.types || [])
       span.dox_type= type
     if tag.description
       span.description!= md(tag.description, true)
@@ -13,7 +15,6 @@ mixin tag-stuff(section_name, tag)
       a(href=tag.url)= (tag.title || tag.url)
     if tag.local
       span.dox_type= tag.local 
-
 
 .dox
   .summary!= md(description.summary)
@@ -33,23 +34,33 @@ mixin tag-stuff(section_name, tag)
           when "param"
             if !hasParams
               - hasParams = true;                                       
-              mixin tag-stuff("Params", tag)
+              mixin tag-section("Params")
+            mixin tag-stuff(tag)
 
           when "return"
             if !hasReturn
               - hasReturn = true;                                       
-              mixin tag-stuff("Returns", tag)
+              mixin tag-section("Return")
+            mixin tag-stuff(tag)
 
           when "type"
             if !hasType
               - hasType = true;                                         
-              mixin tag-stuff("Type", tag)
+              mixin tag-section("Type")
+            mixin tag-stuff(tag)
 
           when "api"
-            mixin tag-stuff("API", tag)
+            mixin tag-section("API")
+            mixin tag-stuff(tag)
 
           when "see"
-            mixin tag-stuff("See", tag)
+            mixin tag-section("See")
+            mixin tag-stuff(tag)
+
+          default
+            - type = tag.type.charAt(0).toUpperCase() + tag.type.slice(1)
+            mixin tag-section(type)
+            mixin tag-stuff(tag)
 
 
 

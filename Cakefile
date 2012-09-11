@@ -5,10 +5,10 @@
 # * install   - copies the build products into your NODE_PATH (i.e. /usr/local/lib/node_modules/MODULE_NAME)
 # * uninstall - deletes any installed build products
 # * test      - runs mocha test framework
-# * docs      - generates annotated documentation using **[docker](http://github.com/brynbellomy/docker)**
+# * docs      - generates annotated documentation using **[otis](http://github.com/brynbellomy/otis)**
 # * clean     - deletes the build products folder
 
-MODULE_NAME    = 'docker'
+MODULE_NAME    = 'otis'
 SRC_DIR        = 'src'
 BUILD_DIR      = 'build'
 LIB_DIR        = 'lib'
@@ -22,7 +22,7 @@ try
 catch err
   console.log "*** Life would be a lot better if you would just type \"npm install -g colors\"..."
   for color in ["red", "green", "grey", "magenta", "bold", "underline", "blue", "cyan", "yellow"]
-    String::__defineGetter__ color, () -> @.toString()
+    String::__defineGetter__ color, () -> @toString()
 
 if MODULE_NAME is "YOUR MODULE NAME" then throw new Error "You need to provide a value for the MODULE_NAME variable in your Cakefile.".red
 
@@ -37,7 +37,7 @@ catch err
   which = null
 
 
-task 'docs', 'generate documentation', -> docker                    -> do all_tasks_successful
+task 'docs', 'generate documentation', -> otis                    -> do all_tasks_successful
 task 'build', 'compile source', -> build -> arrangeBuildDirAndChmod -> do all_tasks_successful
 task 'install', 'install built library', -> install                 -> do all_tasks_successful
 task 'uninstall', 'uninstall built library', -> uninstall           -> do all_tasks_successful
@@ -221,14 +221,14 @@ mocha = (options, callback) ->
   
   launch 'mocha', options, callback
 
-# ## *docker*
+# ## *otis*
 #
 # **given** optional function as callback
-# **then** invoke launch passing docker command
-docker = (callback) ->
-  log_phase "launching docker"
-  launch "docker", ->
-    log_subphase 0, "docker is finished.".cyan
+# **then** invoke launch passing otis command
+otis = (callback) ->
+  log_phase "launching otis"
+  launch "otis", ->
+    log_subphase 0, "otis is finished.".cyan
     callback null
 
 

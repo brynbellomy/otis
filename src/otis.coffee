@@ -1,50 +1,30 @@
 ###!
-# docker.js
+# otis.js
 
-_A simple documentation generator based on [docco](http://jashkenas.github.com/docco/)_
-**Docker** is a really simple documentation generator, which originally started out as a
-pure-javascript port of **docco**, but which eventually gained many extra little features
-which somewhat break docco's philosophy of being a quick-and-dirty thing.
+A highly customizable, extremely simple documentation generator based on
 
-Docker source-code can be found on [GitHub](https://github.com/jbt/docker)
+- [jashkenas / **docco**](http://jashkenas.github.com/docco/)
+- [mbrevoort / **docco-husky**](https://github.com/mbrevoort/docco-husky)
+- [jbt / **docker**](http://jbt.github.com/docker)
 
-Take a look at the [original docco project](http://jashkenas.github.com/docco/) to get a feel
-for the sort of functionality this provides. In short: **Markdown**-based displaying of code comments
-next to syntax-highlighted code. This page is the result of running docker against itself.
+**otis** was once a really simple documentation generator -- **docker**.  **docker** originally
+started out as a pure-javascript port of **docco**, but eventually gained many extra little features
+that somewhat break docco's philosophy of being a quick-and-dirty thing.
 
-The command-line usage of docker is somewhat more useful than that of docco. To use, simply run
+**docker** was based on **docco**'s coffeescript source, but converted to javascript.
 
-```sh
-./docker -i path/to/code -o path/to/docs [a_file.js a_dir]
-```
+**otis** is based on **docker**, but has been re-converted to coffeescript.
 
-Docker will then recurse into the code root directory (or alternatively just the files
-and directories you specify) and document-ize all the files it can.
-The folder structure will be preserved in the document root.
+especially given that some of the conversion was made using the fantastic (but not infallible)
+(http://js2coffee.org), you might notice some strange code artifacts here and there -- javascript-isms
+converted into coffeescript, and coffeescript-isms converted *through* javascript back into itself.
 
-More detailed usage instructions and examples can be found in the [README](../README.md.html)
+otis source code can be found on GitHub at [brynbellomy / otis](https://github.com/brynbellomy/otis)
 
-## Differences from docco
-
-The main differences from docco are
-
- - **jsDoc support**: support for **jsDoc**-style code comments, which
-is provided by way of [Dox](https://github.com/visionmedia/dox). You can see some examples of
-the sort of output you get below.
-
- - **Folder Tree** and **Heading Navigation**: collapsible sidebar with folder tree and jump-to
-heading links for easy navigation between many files and within long files.
-
- - **Markdown File Support**: support for plain markdown files, like the [README](../README.md.html) for this project.
-
- - **Colour Schemes**: support for multiple output colour schemes
-
-
-So let's get started!
+By the way, this page is the result of running otis against itself (with some additional custom CSS appended).
 ###
 
-# ## Node Modules
-# Include all the necessay node modules.
+# module includes
 fs            = require "fs"
 dox           = require "dox"
 path          = require "path"
@@ -54,12 +34,12 @@ mkdirp        = require "mkdirp"
 consolidate   = require "consolidate"
 
 
-class exports.Docker
+class exports.Otis
 
   ###!
-  ## Docker()
+  ## Otis()
 
-  Creates a new docker instance. All methods are called on one instance of this object.
+  Creates a new otis instance. All methods are called on one instance of this object.
 
   Input arguments are an object containing any of the keys
 
@@ -215,7 +195,7 @@ class exports.Docker
   ###!
   ## clean
 
-  Clears out any instance variables so this docker can be rerun
+  Clears out any instance variables so this otis can be rerun
   ###
   clean: =>
     @scanQueue = []
