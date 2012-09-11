@@ -17,16 +17,25 @@ catch e
 # Figure out PWD because it doesn't exist in process.env on windows.
 pwd = path.resolve "."
 
+configToUse = null
+argv = require("optimist").argv
+if argv?._[0] is "use" and argv?._[1]? and argv._[1].toString().trim().length > 0    # being a little overcautious here, i know
+  configToUse = argv._[1].toString().trim()
+
 # Check for local config file
-localJSConfig = (
+configFilenames = []
+configFilenames.push path.join(pwd, "docker.config.#{configToUse}.js") if configToUse?
+configFilenames.push path.join(pwd, "docker.config.js")
+configFilenames.push path.join(process.env.HOME, ".docker")
+
+localJSConfig = {}
+for filename in configFilenames
   try
-    _localConfig = require path.join(pwd, "docker.config.js")
-    console.log "Using docker.config.js config file in PWD"
-    _localConfig
+    localJSConfig = require filename
+    console.log "Using config file '#{filename}'."
+    break
   catch err
-    console.log "err!", err
-    {}
-)
+    continue
 
 console.log localJSConfig
 
@@ -80,11 +89,23 @@ for field in fields
 # Create docker instance
 d = new Docker opts
 
+args = argv._
+if args.length > 0
+  # make sure we remove the 'use x' args from the args list before passing to docker
+  newArgv = []
+  i = 0
+  while i < args.length
+    if args[i] is "use" then i += 2
+    else
+      newArgv.push args[i]
+      i++
+  args = newArgv
+
 # If no file list is specified, just run on whole directory
-if argv._.length is 0
-  argv._ = [ "./" ]
+if args.length <= 0
+  args = [ "./" ]
 
 # Set it running.
-if argv.watch then d.watch argv._
-else               d.doc argv._
+if argv.watch then d.watch args
+else               d.doc   args
 

@@ -135,22 +135,17 @@ exports.Docker = (function() {
     }
     switch (this.markdownEngine) {
       case "gfm":
-        this._renderMarkdown = require("github-flavored-markdown").parse;
-        break;
+        return this._renderMarkdown = require("github-flavored-markdown").parse;
       case "showdown":
-        this._renderMarkdown = require("" + __dirname + "/../res/showdown").Showdown.makeHtml;
-        console.log("SHOW DOWN FOOL", require("" + __dirname + "/../res/showdown"), "ASDFASDF");
-        break;
+        return this._renderMarkdown = require("" + __dirname + "/../res/showdown").Showdown.makeHtml;
       case "marked":
         this._renderMarkdown = require("marked");
-        this._renderMarkdown.setOptions({
+        return this._renderMarkdown.setOptions({
           gfm: false,
           pedantic: false,
           sanitize: false
         });
     }
-    console.log("RENDERMARKDOWN:", this._renderMarkdown);
-    return console.log("ZORK", this.markdownEngine);
   };
 
   Docker.prototype.doc = function(files) {
