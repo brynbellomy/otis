@@ -118,20 +118,23 @@ class exports.Otis
     if opts.colorScheme? then opts.colourScheme = opts.colorScheme
 
     # setup the markdown renderer fn
-    switch @markdownEngine
-      when "gfm"
-        @_renderMarkdown = require("github-flavored-markdown").parse
-      when "showdown"
-        @_renderMarkdown = require("#{__dirname}/../res/showdown").Showdown.makeHtml
-      when "marked"
-        @_renderMarkdown = require "marked"
-        @_renderMarkdown.setOptions {
-          gfm: false
-          pedantic: false
-          sanitize: false
-        }
-      else
-        @_renderMarkdown = (data) -> data  # pass-through
+    @_renderMarkdown = (text, cb) =>
+      fn = null
+      switch @markdownEngine
+        when "gfm"
+          fn = require("github-flavored-markdown").parse
+        when "showdown"
+          fn = require("#{__dirname}/../res/showdown").Showdown.makeHtml
+        when "marked"
+          fn = require "marked"
+          fn.setOptions {
+            gfm: false
+            pedantic: false
+            sanitize: false
+          }
+        else
+          fn = (data) -> data  # pass-through
+      return fn text
 
 
   ###!
@@ -437,6 +440,7 @@ class exports.Otis
     }
 
     inMultiLineComment = false
+    numSpacesIndent = 0
     multiLine = ""
     doxData = undefined
     commentRegex = new RegExp("^\\s*" + params.comment + "\\s?")
@@ -471,12 +475,17 @@ class exports.Otis
                 
                 # standardize the comment block delimiters to the only ones that
                 # dox seems to understand, namely, /* and */
-                multiLine = multiLine.replace(params.multiLine[0], "").replace(params.multiLine[1], "").replace(/\n (?:[^\*])/g, "\n * ")
+                multiLine = multiLine.replace(params.multiLine[0], "").replace(params.multiLine[1], "") #.replace(/\n (?:[^\*])/g, "\n")
                 if multiLine.charAt(0) is "!" then multiLine = multiLine.slice 1 # remove our strict-mode comment marker
-                multiLine = "/**#{multiLine}*/"
-                doxData = dox.parseComments(multiLine,
-                  raw: true
-                )[0]
+                multiLine = "/**#{multiLine}*/".split '\n'
+                fixed = []
+                for line in multiLine
+                  fixed.push line.replace new RegExp("^ {#{numSpacesIndent}}"), ''
+
+                require('eyes').inspect(fixed)
+                multiLine = fixed.join '\n'
+                doxData = dox.parseComments(multiLine, raw: yes)[0]
+                
                 
                 # Don't let dox do any markdown parsing. We'll do that all ourselves with md above
                 doxData.md = md
@@ -510,11 +519,13 @@ class exports.Otis
             if not section.code.match(/^\s*$/) or not section.docs.match(/^\s*$/)
               sections.push section
 
-            section = {
+            section =
               docs: ""
               code: ""
-            }
 
+          match = matchable.match(params.multiLine[0])
+          if match[1]
+            numSpacesIndent = match[1].length
           inMultiLineComment = true
           multiLine = line + "\n"
 
@@ -525,10 +536,9 @@ class exports.Otis
         if section.code
           if not section.code.match(/^\s*$/) or not section.docs.match(/^\s*$/) then sections.push(section)
 
-          section = {
+          section =
             docs: ""
             code: ""
-          }
 
         line = line.replace(commentRegex, "")
         if line.charAt(0) is "!" then line = line.slice 1 # remove ! from beginning of comment if we're running in strict mode
@@ -600,7 +610,7 @@ class exports.Otis
       extensions: ["coffee"]
       executables: ["coffee"]
       comment: "#"
-      multiLine: [/^\s*###/, /###\s*$/]
+      multiLine: [/^(\s*)###/, /###\s*$/]
       # multiLine: [/^###\s*!?\s*$/m, /^###\s*$/m]
       dox: true
 
@@ -729,7 +739,6 @@ class exports.Otis
   ###
   highlight: (sections, language, cb) =>
     params = @languages[language]
-    self = this
     input = []
     i = 0
 
@@ -748,7 +757,7 @@ class exports.Otis
         section.codeHtml = "<div class=\"highlight\"><pre>" + bits[i] + "</pre></div>"
         section.docHtml = @_renderMarkdown section.docs
         i += 1
-      self.processDocCodeBlocks sections, cb
+      @processDocCodeBlocks sections, cb
 
 
 
