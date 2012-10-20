@@ -1,12 +1,14 @@
 {
-  "author": "bryn austin bellomy <bryn.bellomy@gmail.com>",
   "name": "otis",
-  "version": "0.1.5",
+  "version": "0.2.0",
+  "author": "bryn austin bellomy <bryn.bellomy@gmail.com>",
+  "readme": "README.md",
+  "license": "LICENSE.md",
   "dependencies": {
-    "mkdirp": "0.3.2",
-    "dox": "git://github.com/brynbellomy/dox.git",
+    "mkdirp": "0.3.x",
+    "dox": "git://github.com/brynbellomy/dox.git#ac292482c04df6211659e9545edcbfb98ff0fe63",
     "optimist": "0.3.x",
-    "watchr": "2.0.3",
+    "watchr": "2.0.x",
     "consolidate": "0.4.x",
     "github-flavored-markdown": "1.0.x",
     "marked": "0.2.x",
@@ -17,9 +19,9 @@
     "otis": "./bin/otis"
   },
   "engines": {
-    "node": ">=0.4.0"
+    "node": "0.8.x"
   },
-  "description": "Multi-language documentation generator based on docker and docco. Named after the author of \"Sittin' On The Dock of the Bay,\" whose birthday just passed.",
+  "description": "Documentation generator for every language ever based on docker and docco. Named after the author of \"Sittin' On The Dock of the Bay,\" whose birthday just passed.",
   "homepage": "http://github.com/brynbellomy/otis",
   "repository": {
     "type": "git",
