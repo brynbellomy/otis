@@ -477,13 +477,11 @@ class exports.Otis
                 # dox seems to understand, namely, /* and */
                 multiLine = multiLine.replace(params.multiLine[0], "").replace(params.multiLine[1], "") #.replace(/\n (?:[^\*])/g, "\n")
                 if multiLine.charAt(0) is "!" then multiLine = multiLine.slice 1 # remove our strict-mode comment marker
-                multiLine = "/**#{multiLine}*/".split '\n'
-                fixed = []
-                for line in multiLine
-                  fixed.push line.replace new RegExp("^ {#{numSpacesIndent}}"), ''
+                multiLine = "/**#{multiLine}*/"
+                                .split('\n')
+                                .map((line) -> return line.replace(new RegExp("^ {#{numSpacesIndent}}"), ''))
+                                .join('\n')
 
-                require('eyes').inspect(fixed)
-                multiLine = fixed.join '\n'
                 doxData = dox.parseComments(multiLine, raw: yes)[0]
                 
                 

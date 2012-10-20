@@ -533,7 +533,7 @@ exports.Otis = (function() {
     commentRegex = new RegExp("^\\s*" + params.comment + "\\s?");
     async = require("async");
     async.forEachSeries(codeLines, function(line, forEachCb) {
-      var fixed, match, matchable, _i, _len;
+      var match, matchable;
       matchable = line.replace(/(["'])(?:\\.|(?!\1).)*\1/g, "");
       if (params.multiLine) {
         if (inMultiLineComment) {
@@ -546,14 +546,9 @@ exports.Otis = (function() {
                 if (multiLine.charAt(0) === "!") {
                   multiLine = multiLine.slice(1);
                 }
-                multiLine = ("/**" + multiLine + "*/").split('\n');
-                fixed = [];
-                for (_i = 0, _len = multiLine.length; _i < _len; _i++) {
-                  line = multiLine[_i];
-                  fixed.push(line.replace(new RegExp("^ {" + numSpacesIndent + "}"), ''));
-                }
-                require('eyes').inspect(fixed);
-                multiLine = fixed.join('\n');
+                multiLine = ("/**" + multiLine + "*/").split('\n').map(function(line) {
+                  return line.replace(new RegExp("^ {" + numSpacesIndent + "}"), '');
+                }).join('\n');
                 doxData = dox.parseComments(multiLine, {
                   raw: true
                 })[0];
