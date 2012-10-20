@@ -313,7 +313,7 @@ install = (install_phase_cb) ->
       stages.rm.push            ((cb) -> child_process.exec "rm -rf #{the_path}", cb) if fs.existsSync the_path
       stages.mkdir.push         ((cb) -> mkdirp the_path, cb)
       stages.printCp.push       ((cb) -> log_subphase 2, mkCopyMsg("#{build_paths[name]}/*", "#{install_paths[name]}/"), cb)
-      stages.cp.push            ((cb) -> child_process.exec "cp -R '#{build_paths[name]}/' '#{install_paths[name]}'", cb)
+      stages.cp.push            ((cb) -> child_process.exec "cp -R '#{build_paths[name]}/'* '#{install_paths[name]}'", cb)
 
   mkCopyMsg = (from, to) -> "#{from}".magenta + " -> ".cyan + "#{to}".magenta.bold
 
