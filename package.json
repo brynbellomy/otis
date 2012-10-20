@@ -1,6 +1,6 @@
 {
   "name": "otis",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "author": "bryn austin bellomy <bryn.bellomy@gmail.com>",
   "license": "WTFPL",
   "dependencies": {
@@ -14,6 +14,7 @@
     "async": "0.1.x",
     "colors": "0.6.x"
   },
+  "keywords": [ "documentation", "generator", "cli", "jsdoc", "dox", "docco", "coffeescript", "coffee" ],
   "bin": {
     "otis": "./bin/otis"
   },
