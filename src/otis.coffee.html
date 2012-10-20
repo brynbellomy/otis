@@ -122,20 +122,23 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     <span class="k">if</span> <span class="nx">opts</span><span class="p">.</span><span class="nx">colorScheme</span><span class="o">?</span> <span class="k">then</span> <span class="nv">opts.colourScheme = </span><span class="nx">opts</span><span class="p">.</span><span class="nx">colorScheme</span>
 
     <span class="c1"># setup the markdown renderer fn</span>
-    <span class="k">switch</span> <span class="nx">@markdownEngine</span>
-      <span class="k">when</span> <span class="s">&quot;gfm&quot;</span>
-        <span class="vi">@_renderMarkdown = </span><span class="nx">require</span><span class="p">(</span><span class="s">&quot;github-flavored-markdown&quot;</span><span class="p">).</span><span class="nx">parse</span>
-      <span class="k">when</span> <span class="s">&quot;showdown&quot;</span>
-        <span class="vi">@_renderMarkdown = </span><span class="nx">require</span><span class="p">(</span><span class="s">&quot;</span><span class="si">#{</span><span class="nx">__dirname</span><span class="si">}</span><span class="s">/../res/showdown&quot;</span><span class="p">).</span><span class="nx">Showdown</span><span class="p">.</span><span class="nx">makeHtml</span>
-      <span class="k">when</span> <span class="s">&quot;marked&quot;</span>
-        <span class="vi">@_renderMarkdown = </span><span class="nx">require</span> <span class="s">&quot;marked&quot;</span>
-        <span class="nx">@_renderMarkdown</span><span class="p">.</span><span class="nx">setOptions</span> <span class="p">{</span>
-          <span class="nv">gfm: </span><span class="kc">false</span>
-          <span class="nv">pedantic: </span><span class="kc">false</span>
-          <span class="nv">sanitize: </span><span class="kc">false</span>
-        <span class="p">}</span>
-      <span class="k">else</span>
-        <span class="vi">@_renderMarkdown = </span><span class="nf">(data) -&gt;</span> <span class="nx">data</span>  <span class="c1"># pass-through</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
+    <span class="vi">@_renderMarkdown = </span><span class="p">(</span><span class="nx">text</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="nv">fn = </span><span class="kc">null</span>
+      <span class="k">switch</span> <span class="nx">@markdownEngine</span>
+        <span class="k">when</span> <span class="s">&quot;gfm&quot;</span>
+          <span class="nv">fn = </span><span class="nx">require</span><span class="p">(</span><span class="s">&quot;github-flavored-markdown&quot;</span><span class="p">).</span><span class="nx">parse</span>
+        <span class="k">when</span> <span class="s">&quot;showdown&quot;</span>
+          <span class="nv">fn = </span><span class="nx">require</span><span class="p">(</span><span class="s">&quot;</span><span class="si">#{</span><span class="nx">__dirname</span><span class="si">}</span><span class="s">/../res/showdown&quot;</span><span class="p">).</span><span class="nx">Showdown</span><span class="p">.</span><span class="nx">makeHtml</span>
+        <span class="k">when</span> <span class="s">&quot;marked&quot;</span>
+          <span class="nv">fn = </span><span class="nx">require</span> <span class="s">&quot;marked&quot;</span>
+          <span class="nx">fn</span><span class="p">.</span><span class="nx">setOptions</span> <span class="p">{</span>
+            <span class="nv">gfm: </span><span class="kc">false</span>
+            <span class="nv">pedantic: </span><span class="kc">false</span>
+            <span class="nv">sanitize: </span><span class="kc">false</span>
+          <span class="p">}</span>
+        <span class="k">else</span>
+          <span class="nv">fn = </span><span class="nf">(data) -&gt;</span> <span class="nx">data</span>  <span class="c1"># pass-through</span>
+      <span class="k">return</span> <span class="nx">fn</span> <span class="nx">text</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
 <div class="pilwrap" id="doc">
   <h2>
     <a href="#doc" class="pilcrow">&#182;</a>
@@ -409,6 +412,7 @@ A section is defined to be one block of code with an accompanying comment</p>
     <span class="p">}</span>
 
     <span class="nv">inMultiLineComment = </span><span class="kc">false</span>
+    <span class="nv">numSpacesIndent = </span><span class="mi">0</span>
     <span class="nv">multiLine = </span><span class="s">&quot;&quot;</span>
     <span class="nv">doxData = </span><span class="kc">undefined</span>
     <span class="nv">commentRegex = </span><span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s">&quot;^\\s*&quot;</span> <span class="o">+</span> <span class="nx">params</span><span class="p">.</span><span class="nx">comment</span> <span class="o">+</span> <span class="s">&quot;\\s?&quot;</span><span class="p">)</span>
@@ -443,12 +447,17 @@ A section is defined to be one block of code with an accompanying comment</p>
                 
                 <span class="c1"># standardize the comment block delimiters to the only ones that</span>
                 <span class="c1"># dox seems to understand, namely, /* and */</span>
-                <span class="nv">multiLine = </span><span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\n (?:[^\*])/g</span><span class="p">,</span> <span class="s">&quot;\n * &quot;</span><span class="p">)</span>
+                <span class="nv">multiLine = </span><span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="c1">#.replace(/\n (?:[^\*])/g, &quot;\n&quot;)</span>
                 <span class="k">if</span> <span class="nx">multiLine</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">is</span> <span class="s">&quot;!&quot;</span> <span class="k">then</span> <span class="nv">multiLine = </span><span class="nx">multiLine</span><span class="p">.</span><span class="nx">slice</span> <span class="mi">1</span> <span class="c1"># remove our strict-mode comment marker</span>
-                <span class="nv">multiLine = </span><span class="s">&quot;/**</span><span class="si">#{</span><span class="nx">multiLine</span><span class="si">}</span><span class="s">*/&quot;</span>
-                <span class="nv">doxData = </span><span class="nx">dox</span><span class="p">.</span><span class="nx">parseComments</span><span class="p">(</span><span class="nx">multiLine</span><span class="p">,</span>
-                  <span class="nv">raw: </span><span class="kc">true</span>
-                <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="nv">multiLine = </span><span class="s">&quot;/**</span><span class="si">#{</span><span class="nx">multiLine</span><span class="si">}</span><span class="s">*/&quot;</span><span class="p">.</span><span class="nx">split</span> <span class="s">&#39;\n&#39;</span>
+                <span class="nv">fixed = </span><span class="p">[]</span>
+                <span class="k">for</span> <span class="nx">line</span> <span class="k">in</span> <span class="nx">multiLine</span>
+                  <span class="nx">fixed</span><span class="p">.</span><span class="nx">push</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span> <span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s">&quot;^ {</span><span class="si">#{</span><span class="nx">numSpacesIndent</span><span class="si">}</span><span class="s">}&quot;</span><span class="p">),</span> <span class="s">&#39;&#39;</span>
+
+                <span class="nx">require</span><span class="p">(</span><span class="s">&#39;eyes&#39;</span><span class="p">).</span><span class="nx">inspect</span><span class="p">(</span><span class="nx">fixed</span><span class="p">)</span>
+                <span class="nv">multiLine = </span><span class="nx">fixed</span><span class="p">.</span><span class="nx">join</span> <span class="s">&#39;\n&#39;</span>
+                <span class="nv">doxData = </span><span class="nx">dox</span><span class="p">.</span><span class="nx">parseComments</span><span class="p">(</span><span class="nx">multiLine</span><span class="p">,</span> <span class="nv">raw: </span><span class="kc">yes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                
                 
                 <span class="c1"># Don&#39;t let dox do any markdown parsing. We&#39;ll do that all ourselves with md above</span>
                 <span class="nv">doxData.md = </span><span class="nx">md</span>
@@ -482,11 +491,13 @@ A section is defined to be one block of code with an accompanying comment</p>
             <span class="k">if</span> <span class="o">not</span> <span class="nx">section</span><span class="p">.</span><span class="nx">code</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\s*$/</span><span class="p">)</span> <span class="o">or</span> <span class="o">not</span> <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\s*$/</span><span class="p">)</span>
               <span class="nx">sections</span><span class="p">.</span><span class="nx">push</span> <span class="nx">section</span>
 
-            <span class="nv">section = </span><span class="p">{</span>
+            <span class="nv">section =</span>
               <span class="nv">docs: </span><span class="s">&quot;&quot;</span>
               <span class="nv">code: </span><span class="s">&quot;&quot;</span>
-            <span class="p">}</span>
 
+          <span class="nv">match = </span><span class="nx">matchable</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+          <span class="k">if</span> <span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="nv">numSpacesIndent = </span><span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nx">length</span>
           <span class="nv">inMultiLineComment = </span><span class="kc">true</span>
           <span class="nv">multiLine = </span><span class="nx">line</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
 
@@ -497,10 +508,9 @@ A section is defined to be one block of code with an accompanying comment</p>
         <span class="k">if</span> <span class="nx">section</span><span class="p">.</span><span class="nx">code</span>
           <span class="k">if</span> <span class="o">not</span> <span class="nx">section</span><span class="p">.</span><span class="nx">code</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\s*$/</span><span class="p">)</span> <span class="o">or</span> <span class="o">not</span> <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\s*$/</span><span class="p">)</span> <span class="k">then</span> <span class="nx">sections</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">section</span><span class="p">)</span>
 
-          <span class="nv">section = </span><span class="p">{</span>
+          <span class="nv">section =</span>
             <span class="nv">docs: </span><span class="s">&quot;&quot;</span>
             <span class="nv">code: </span><span class="s">&quot;&quot;</span>
-          <span class="p">}</span>
 
         <span class="nv">line = </span><span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">commentRegex</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="nx">line</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">is</span> <span class="s">&quot;!&quot;</span> <span class="k">then</span> <span class="nv">line = </span><span class="nx">line</span><span class="p">.</span><span class="nx">slice</span> <span class="mi">1</span> <span class="c1"># remove ! from beginning of comment if we&#39;re running in strict mode</span>
@@ -568,7 +578,7 @@ A section is defined to be one block of code with an accompanying comment</p>
       <span class="nv">extensions: </span><span class="p">[</span><span class="s">&quot;coffee&quot;</span><span class="p">]</span>
       <span class="nv">executables: </span><span class="p">[</span><span class="s">&quot;coffee&quot;</span><span class="p">]</span>
       <span class="nv">comment: </span><span class="s">&quot;</span><span class="err">#</span><span class="s">&quot;</span>
-      <span class="nv">multiLine: </span><span class="p">[</span><span class="sr">/^\s*###/</span><span class="p">,</span> <span class="sr">/###\s*$/</span><span class="p">]</span>
+      <span class="nv">multiLine: </span><span class="p">[</span><span class="sr">/^(\s*)###/</span><span class="p">,</span> <span class="sr">/###\s*$/</span><span class="p">]</span>
       <span class="c1"># multiLine: [/^###\s*!?\s*$/m, /^###\s*$/m]</span>
       <span class="nv">dox: </span><span class="kc">true</span>
 
@@ -599,7 +609,7 @@ A section is defined to be one block of code with an accompanying comment</p>
       <span class="nv">executables: </span><span class="p">[</span><span class="s">&quot;clang&quot;</span><span class="p">,</span> <span class="s">&quot;gcc&quot;</span><span class="p">]</span>
       <span class="nv">dox: </span><span class="kc">true</span>
       <span class="nv">comment: </span><span class="s">&quot;//&quot;</span>
-      <span class="nv">multiLine: </span><span class="p">[</span><span class="sr">/\/\*/</span><span class="p">,</span> <span class="sr">/\*\//</span><span class="p">]</span>
+      <span class="nv">multiLine: </span><span class="p">[</span><span class="sr">/\/\*\*?/</span><span class="p">,</span> <span class="sr">/\*\//</span><span class="p">]</span>
 
     <span class="nv">cpp:</span>
       <span class="nv">extensions: </span><span class="p">[</span><span class="s">&quot;cc&quot;</span><span class="p">,</span> <span class="s">&quot;cpp&quot;</span><span class="p">]</span>
@@ -687,7 +697,6 @@ Given an array of section objects, loop through them, and for each
 section generate pretty html for the comments and the code, and put them in
 <code>docHtml</code> and <code>codeHtml</code> respectively</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Array of section objects</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">Language ith which to highlight the file</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">highlight: </span><span class="p">(</span><span class="nx">sections</span><span class="p">,</span> <span class="nx">language</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
     <span class="nv">params = </span><span class="nx">@languages</span><span class="p">[</span><span class="nx">language</span><span class="p">]</span>
-    <span class="nv">self = </span><span class="k">this</span>
     <span class="nv">input = </span><span class="p">[]</span>
     <span class="nv">i = </span><span class="mi">0</span>
 
@@ -706,7 +715,7 @@ section generate pretty html for the comments and the code, and put them in
         <span class="nv">section.codeHtml = </span><span class="s">&quot;&lt;div class=\&quot;highlight\&quot;&gt;&lt;pre&gt;&quot;</span> <span class="o">+</span> <span class="nx">bits</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;&lt;/pre&gt;&lt;/div&gt;&quot;</span>
         <span class="nv">section.docHtml = </span><span class="nx">@_renderMarkdown</span> <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span>
         <span class="nx">i</span> <span class="o">+=</span> <span class="mi">1</span>
-      <span class="nx">self</span><span class="p">.</span><span class="nx">processDocCodeBlocks</span> <span class="nx">sections</span><span class="p">,</span> <span class="nx">cb</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
+      <span class="nx">@processDocCodeBlocks</span> <span class="nx">sections</span><span class="p">,</span> <span class="nx">cb</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
 <div class="pilwrap" id="processdoccodeblocks">
   <h2>
     <a href="#processdoccodeblocks" class="pilcrow">&#182;</a>
