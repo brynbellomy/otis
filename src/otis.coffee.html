@@ -61,6 +61,8 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
 <li><code>css</code></li>
 <li><code>index</code></li>
 <li><code>tolerant</code></li>
+<li><code>delimStart</code></li>
+<li><code>delimEnd</code></li>
 <li><code>onlyUpdated</code></li>
 <li><code>ignoreHidden</code></li>
 <li><code>sidebarState</code></li>
@@ -73,8 +75,8 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     <span class="vi">@tree = </span><span class="p">{}</span>
 
 
-  <span class="nv">parseOpts: </span><span class="p">(</span><span class="nx">opts</span><span class="p">)</span> <span class="o">=&gt;</span>
-    <span class="nv">defaults = </span><span class="p">{</span>
+  <span class="nv">parseOpts: </span><span class="nf">(opts) =&gt;</span>
+    <span class="nv">defaults =</span>
       <span class="nv">inDir: </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span> <span class="s">&quot;.&quot;</span>
       <span class="nv">outDir: </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span> <span class="s">&quot;doc&quot;</span>
       <span class="nv">tplDir: </span><span class="nx">path</span><span class="p">.</span><span class="nx">join</span> <span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">),</span> <span class="s">&quot;res&quot;</span>
@@ -85,11 +87,12 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
       <span class="nv">css: </span><span class="p">[]</span>
       <span class="nv">index: </span><span class="kc">null</span>
       <span class="nv">tolerant: </span><span class="kc">false</span>
+      <span class="nv">delimStart: </span><span class="kc">null</span>
+      <span class="nv">delimEnd: </span><span class="kc">null</span>
       <span class="nv">onlyUpdated: </span><span class="kc">false</span>
       <span class="nv">ignoreHidden: </span><span class="kc">false</span>
       <span class="nv">sidebarState: </span><span class="kc">true</span>
       <span class="nv">exclude: </span><span class="kc">false</span>
-    <span class="p">}</span>
 
     
     <span class="c1"># Loop through and fix up any unspecified options with the defaults.</span>
@@ -109,6 +112,8 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     <span class="vi">@css            = </span><span class="nx">opts</span><span class="p">.</span><span class="nx">css</span>
     <span class="vi">@index          = </span><span class="nx">opts</span><span class="p">.</span><span class="nx">index</span>
     <span class="vi">@tolerant       = </span><span class="o">!!</span><span class="nx">opts</span><span class="p">.</span><span class="nx">tolerant</span>
+    <span class="vi">@delimStart     = </span><span class="p">(</span><span class="k">if</span> <span class="nx">opts</span><span class="p">.</span><span class="nx">delimStart</span><span class="o">?</span> <span class="k">then</span> <span class="nb">RegExp</span><span class="p">(</span><span class="nx">opts</span><span class="p">.</span><span class="nx">delimStart</span><span class="p">)</span> <span class="k">else</span> <span class="kc">undefined</span><span class="p">)</span>
+    <span class="vi">@delimEnd       = </span><span class="p">(</span><span class="k">if</span> <span class="nx">opts</span><span class="p">.</span><span class="nx">delimEnd</span><span class="o">?</span>   <span class="k">then</span> <span class="nb">RegExp</span><span class="p">(</span><span class="nx">opts</span><span class="p">.</span><span class="nx">delimEnd</span><span class="p">)</span>   <span class="k">else</span> <span class="kc">undefined</span><span class="p">)</span>
     <span class="vi">@ignoreHidden   = </span><span class="o">!!</span><span class="nx">opts</span><span class="p">.</span><span class="nx">ignoreHidden</span>
     <span class="vi">@sidebarState   = </span><span class="nx">opts</span><span class="p">.</span><span class="nx">sidebarState</span>
     
@@ -122,7 +127,7 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     <span class="k">if</span> <span class="nx">opts</span><span class="p">.</span><span class="nx">colorScheme</span><span class="o">?</span> <span class="k">then</span> <span class="nv">opts.colourScheme = </span><span class="nx">opts</span><span class="p">.</span><span class="nx">colorScheme</span>
 
     <span class="c1"># setup the markdown renderer fn</span>
-    <span class="vi">@_renderMarkdown = </span><span class="p">(</span><span class="nx">text</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="vi">@_renderMarkdown = </span><span class="nf">(text, cb) =&gt;</span>
       <span class="nv">fn = </span><span class="kc">null</span>
       <span class="k">switch</span> <span class="nx">@markdownEngine</span>
         <span class="k">when</span> <span class="s">&quot;gfm&quot;</span>
@@ -145,7 +150,7 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     doc
   </h2>
 </div>
-</div><div class="body"><p>Generates documentation for specified files.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">files</code> &mdash; <span class="description">Array of file paths relative to the <code>inDir</code> to generate documentation for.</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">doc: </span><span class="p">(</span><span class="nx">files</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Generates documentation for specified files.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">files</code> &mdash; <span class="description">Array of file paths relative to the <code>inDir</code> to generate documentation for.</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">doc: </span><span class="nf">(files) =&gt;</span>
     <span class="vi">@running = </span><span class="kc">true</span>
     <span class="p">[].</span><span class="nx">push</span><span class="p">.</span><span class="nx">apply</span> <span class="nx">@scanQueue</span><span class="p">,</span> <span class="nx">files</span>
     <span class="nx">@addNextFile</span><span class="p">()</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
@@ -155,7 +160,7 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     watch
   </h2>
 </div>
-</div><div class="body"><p>Watches the input directory for file changes and updates docs whenever a file is updated</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">files</code> &mdash; <span class="description">Array of file paths relative to the <code>inDir</code> to generate documentation for.</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">watch: </span><span class="p">(</span><span class="nx">files</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Watches the input directory for file changes and updates docs whenever a file is updated</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">files</code> &mdash; <span class="description">Array of file paths relative to the <code>inDir</code> to generate documentation for.</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">watch: </span><span class="nf">(files) =&gt;</span>
     <span class="vi">@watching = </span><span class="kc">true</span>
     <span class="vi">@watchFiles = </span><span class="nx">files</span>
     <span class="nv">uto = </span><span class="kc">false</span>
@@ -163,7 +168,7 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     
     <span class="c1"># Function to call when a file is changed. We put this on a timeout to account</span>
     <span class="c1"># for several file changes happening in quick succession.</span>
-    <span class="nv">update = </span><span class="o">-&gt;</span>
+    <span class="nv">update = </span><span class="nf">-&gt;</span>
       <span class="k">return</span> <span class="p">(</span><span class="nv">uto = </span><span class="nx">setTimeout</span><span class="p">(</span><span class="nx">update</span><span class="p">,</span> <span class="mi">250</span><span class="p">))</span>  <span class="k">if</span> <span class="nx">self</span><span class="p">.</span><span class="nx">running</span>
       <span class="nx">self</span><span class="p">.</span><span class="nx">clean</span><span class="p">()</span>
       <span class="nx">self</span><span class="p">.</span><span class="nx">doc</span> <span class="nx">self</span><span class="p">.</span><span class="nx">watchFiles</span>
@@ -171,8 +176,8 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     
     <span class="c1"># Install watchr. The `null` here is a watchr bug - looks like he forgot to allow for exactly</span>
     <span class="c1"># two arguments (like in his example)</span>
-    <span class="nx">watchr</span><span class="p">.</span><span class="nx">watch</span><span class="p">(</span><span class="nx">@inDir</span><span class="p">,</span> <span class="p">(</span><span class="o">-&gt;</span>
-      <span class="nv">uto = </span><span class="nx">setTimeout</span><span class="p">(</span><span class="nx">update</span><span class="p">,</span> <span class="mi">250</span><span class="p">)</span>  <span class="nx">unless</span> <span class="nx">uto</span>
+    <span class="nx">watchr</span><span class="p">.</span><span class="nx">watch</span><span class="p">(</span><span class="nx">@inDir</span><span class="p">,</span> <span class="p">(</span><span class="nf">-&gt;</span>
+      <span class="nv">uto = </span><span class="nx">setTimeout</span><span class="p">(</span><span class="nx">update</span><span class="p">,</span> <span class="mi">250</span><span class="p">)</span>  <span class="k">unless</span> <span class="nx">uto</span>
     <span class="p">),</span> <span class="kc">null</span><span class="p">)</span>
     
     <span class="c1"># Aaaaand, go!</span>
@@ -183,7 +188,7 @@ converted into coffeescript, and coffeescript-isms converted <em>through</em> ja
     finished
   </h2>
 </div>
-</div><div class="body"><p>Callback function fired when processing is finished.</p></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">finished: </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Callback function fired when processing is finished.</p></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">finished: </span><span class="nf">(err) =&gt;</span>
     <span class="k">if</span> <span class="nx">err</span> <span class="k">then</span> <span class="nx">console</span><span class="p">.</span><span class="nx">error</span> <span class="nx">err</span><span class="p">.</span><span class="nx">toString</span><span class="p">().</span><span class="nx">red</span>
     <span class="vi">@running = </span><span class="kc">false</span>
 
@@ -254,7 +259,7 @@ If it's a file, add it to the queue.</p></div></div></td><td class="code highlig
     queueFile
   </h2>
 </div>
-</div><div class="body"><p>Queues a file for processing, and additionally stores it in the folder tree</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of the file to queue</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">queueFile: </span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Queues a file for processing, and additionally stores it in the folder tree</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of the file to queue</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">queueFile: </span><span class="nf">(filename) =&gt;</span>
     <span class="nx">@files</span><span class="p">.</span><span class="nx">push</span> <span class="nx">filename</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
 <div class="pilwrap" id="addfiletotree">
   <h2>
@@ -264,7 +269,7 @@ If it's a file, add it to the queue.</p></div></div></td><td class="code highlig
 </div>
 </div><div class="body"><p>Adds a file to the file tree to show in the sidebar. This used to be in <code>queueFile</code> but
 since we're now only deciding whether or not the file can be included at the point of
-reading it, this has to happen later.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of file to add to the tree</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">addFileToTree: </span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span> <span class="o">=&gt;</span>
+reading it, this has to happen later.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of file to add to the tree</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">addFileToTree: </span><span class="nf">(filename) =&gt;</span>
     <span class="nv">pathSeparator = </span><span class="nx">path</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="s">&quot;b&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(^.*a|b.*$)/g</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
     
     <span class="c1"># Split the file&#39;s path into the individual directories</span>
@@ -291,11 +296,11 @@ reading it, this has to happen later.</p></div><div class="details"><div class="
     <span class="nv">i = </span><span class="mi">0</span>
 
     <span class="k">while</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">bits</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span>
-      <span class="nv">currDir.dirs = </span><span class="p">{}</span>  <span class="nx">unless</span> <span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span>
-      <span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">bits</span><span class="p">[</span><span class="nx">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="nx">unless</span> <span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">bits</span><span class="p">[</span><span class="nx">i</span><span class="p">]]</span>
+      <span class="nv">currDir.dirs = </span><span class="p">{}</span>  <span class="k">unless</span> <span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span>
+      <span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">bits</span><span class="p">[</span><span class="nx">i</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="k">unless</span> <span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">bits</span><span class="p">[</span><span class="nx">i</span><span class="p">]]</span>
       <span class="nv">currDir = </span><span class="nx">currDir</span><span class="p">.</span><span class="nx">dirs</span><span class="p">[</span><span class="nx">bits</span><span class="p">[</span><span class="nx">i</span><span class="p">]]</span>
       <span class="nx">i</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="nv">currDir.files = </span><span class="p">[]</span>  <span class="nx">unless</span> <span class="nx">currDir</span><span class="p">.</span><span class="nx">files</span>
+    <span class="nv">currDir.files = </span><span class="p">[]</span>  <span class="k">unless</span> <span class="nx">currDir</span><span class="p">.</span><span class="nx">files</span>
     <span class="nx">currDir</span><span class="p">.</span><span class="nx">files</span><span class="p">.</span><span class="nx">push</span> <span class="nx">bits</span><span class="p">[</span><span class="nx">bits</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
 <div class="pilwrap" id="processnextfile">
   <h2>
@@ -317,14 +322,14 @@ reading it, this has to happen later.</p></div><div class="details"><div class="
 </div>
 </div><div class="body"><p><em>This is where the magic happens</em></p>
 
-<p>Generate the documentation for a file</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">File name to generate documentation for</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to execute when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">generateDoc: </span><span class="p">(</span><span class="nx">infilename</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+<p>Generate the documentation for a file</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">File name to generate documentation for</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to execute when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">generateDoc: </span><span class="nf">(infilename, cb) =&gt;</span>
     <span class="vi">@running = </span><span class="kc">true</span>
     <span class="nv">filename = </span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">@inDir</span><span class="p">,</span> <span class="nx">infilename</span><span class="p">)</span>
 
-    <span class="nx">@decideWhetherToProcess</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="p">(</span><span class="nx">shouldProcess</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nx">@decideWhetherToProcess</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="nf">(shouldProcess) =&gt;</span>
       <span class="k">if</span> <span class="o">not</span> <span class="nx">shouldProcess</span> <span class="k">then</span> <span class="k">return</span> <span class="nx">cb</span><span class="p">()</span>
 
-      <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="s">&quot;utf-8&quot;</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="s">&quot;utf-8&quot;</span><span class="p">,</span> <span class="nf">(err, data) =&gt;</span>
         <span class="k">if</span> <span class="nx">err</span> <span class="k">then</span> <span class="k">throw</span> <span class="nx">err</span>
 
         <span class="nv">lang = </span><span class="nx">@languageParams</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="nx">data</span><span class="p">)</span>
@@ -353,7 +358,7 @@ flag was set on initialization, only allow processing of files that
 are newer than their counterpart generated doc file.</p>
 
 <p>Fires a callback function with either true or false depending on whether
-or not the file should be processed</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">The name of the file to check</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">callback</code> &mdash; <span class="description">Callback function</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">decideWhetherToProcess: </span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="nx">callback</span><span class="p">)</span> <span class="o">=&gt;</span>
+or not the file should be processed</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">The name of the file to check</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">callback</code> &mdash; <span class="description">Callback function</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">decideWhetherToProcess: </span><span class="nf">(filename, callback) =&gt;</span>
     <span class="c1"># If we should be processing all files, then yes, we should process this one</span>
     <span class="k">if</span> <span class="o">not</span> <span class="nx">@onlyUpdated</span>
       <span class="k">return</span> <span class="nx">callback</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
@@ -369,7 +374,7 @@ or not the file should be processed</p></div><div class="details"><div class="do
     fileIsNewer
   </h2>
 </div>
-</div><div class="body"><p>Sees whether one file is newer than another</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">file</code> &mdash; <span class="description">File to check</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">otherFile</code> &mdash; <span class="description">File to compare to</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">callback</code> &mdash; <span class="description">Callback to fire with true if file is newer than otherFile</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">fileIsNewer: </span><span class="p">(</span><span class="nx">file</span><span class="p">,</span> <span class="nx">otherFile</span><span class="p">,</span> <span class="nx">callback</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Sees whether one file is newer than another</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">file</code> &mdash; <span class="description">File to check</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">otherFile</code> &mdash; <span class="description">File to compare to</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">callback</code> &mdash; <span class="description">Callback to fire with true if file is newer than otherFile</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">fileIsNewer: </span><span class="nf">(file, otherFile, callback) =&gt;</span>
     <span class="nx">fs</span><span class="p">.</span><span class="nx">stat</span> <span class="nx">otherFile</span><span class="p">,</span> <span class="nf">(err, outStat) -&gt;</span>
       
       <span class="c1"># If the output file doesn&#39;t exist, then definitely process this file</span>
@@ -396,20 +401,24 @@ A section is defined to be one block of code with an accompanying comment</p>
 <span class="p">}</span>
 </code></pre></div>
 
-</div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">data</code> &mdash; <span class="description">The contents of the script file</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">The language of the script file</span></div><div class="dox_tag_title"></div><div class="dox_tag_detail"></div><div class="dox_tag_title">Return</div><div class="dox_tag_detail"><span class="dox_type">Array</span> &mdash; <span class="description">array of section objects</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">parseSections: </span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">language</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">data</code> &mdash; <span class="description">The contents of the script file</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">The language of the script file</span></div><div class="dox_tag_title"></div><div class="dox_tag_detail"></div><div class="dox_tag_title">Return</div><div class="dox_tag_detail"><span class="dox_type">Array</span> &mdash; <span class="description">array of section objects</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">parseSections: </span><span class="nf">(data, language) =&gt;</span>
     
     <span class="c1"># Fetch language-specific parameters for this code file</span>
-    <span class="nv">md = </span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">stripParas</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nv">md = </span><span class="nf">(a, stripParas) =&gt;</span>
       <span class="nv">h = </span><span class="nx">@_renderMarkdown</span> <span class="nx">a</span><span class="p">.</span><span class="nx">replace</span> <span class="sr">/(^\s*|\s*$)/</span><span class="p">,</span> <span class="s">&quot;&quot;</span>
       <span class="k">return</span> <span class="p">(</span><span class="k">if</span> <span class="nx">stripParas</span> <span class="k">then</span> <span class="nx">h</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;\/?p&gt;/g</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="nx">h</span><span class="p">)</span>
 
     <span class="nv">codeLines = </span><span class="nx">data</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s">&quot;\n&quot;</span><span class="p">)</span>
     <span class="nv">sections = </span><span class="p">[]</span>
     <span class="nv">params = </span><span class="nx">@languages</span><span class="p">[</span><span class="nx">language</span><span class="p">]</span>
-    <span class="nv">section = </span><span class="p">{</span>
+
+    <span class="nv">multilineDelims =</span>
+      <span class="nv">start: </span><span class="nx">@delimStart</span> <span class="o">?</span> <span class="p">(</span><span class="nx">params</span><span class="o">?</span><span class="p">.</span><span class="nx">multiLine</span><span class="o">?</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">?</span> <span class="kc">null</span><span class="p">)</span>
+      <span class="nv">end: </span>  <span class="nx">@delimEnd</span>   <span class="o">?</span> <span class="p">(</span><span class="nx">params</span><span class="o">?</span><span class="p">.</span><span class="nx">multiLine</span><span class="o">?</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">?</span> <span class="kc">null</span><span class="p">)</span>
+
+    <span class="nv">section =</span>
       <span class="nv">docs: </span><span class="s">&quot;&quot;</span>
       <span class="nv">code: </span><span class="s">&quot;&quot;</span>
-    <span class="p">}</span>
 
     <span class="nv">inMultiLineComment = </span><span class="kc">false</span>
     <span class="nv">numSpacesIndent = </span><span class="mi">0</span>
@@ -418,21 +427,18 @@ A section is defined to be one block of code with an accompanying comment</p>
     <span class="nv">commentRegex = </span><span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s">&quot;^\\s*&quot;</span> <span class="o">+</span> <span class="nx">params</span><span class="p">.</span><span class="nx">comment</span> <span class="o">+</span> <span class="s">&quot;\\s?&quot;</span><span class="p">)</span>
     
     <span class="c1"># Loop through all the lines, and parse into sections</span>
-    <span class="c1"># i = 0</span>
-
     <span class="nv">async = </span><span class="nx">require</span> <span class="s">&quot;async&quot;</span>
-    <span class="nx">async</span><span class="p">.</span><span class="nx">forEachSeries</span> <span class="nx">codeLines</span><span class="p">,</span> <span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">forEachCb</span><span class="p">)</span> <span class="o">=&gt;</span>
-    <span class="c1"># for line in codeLines</span>
+    <span class="nx">async</span><span class="p">.</span><span class="nx">forEachSeries</span> <span class="nx">codeLines</span><span class="p">,</span> <span class="nf">(line, forEachCb) =&gt;</span>
       
       <span class="c1"># Only match against parts of the line that don&#39;t appear in strings</span>
       <span class="nv">matchable = </span><span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/([&quot;&#39;])(?:\\.|(?!\1).)*\1/g</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
-      <span class="k">if</span> <span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span>
+      <span class="k">if</span> <span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="o">?</span> <span class="o">and</span> <span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">end</span><span class="o">?</span>
         
         <span class="c1"># If we are currently in a multiline comment, behave differently</span>
         <span class="k">if</span> <span class="nx">inMultiLineComment</span>
           
           <span class="c1"># End-multiline comments should match regardless of whether they&#39;re &#39;quoted&#39;</span>
-          <span class="k">if</span> <span class="nx">line</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+          <span class="k">if</span> <span class="nx">line</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">end</span><span class="p">)</span>
             
             <span class="c1"># Once we have reached the end of the multiline, take the whole content</span>
             <span class="c1"># of the multiline comment, and pass it through **dox**, which will then</span>
@@ -447,32 +453,30 @@ A section is defined to be one block of code with an accompanying comment</p>
                 
                 <span class="c1"># standardize the comment block delimiters to the only ones that</span>
                 <span class="c1"># dox seems to understand, namely, /* and */</span>
-                <span class="nv">multiLine = </span><span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="c1">#.replace(/\n (?:[^\*])/g, &quot;\n&quot;)</span>
+                <span class="nv">multiLine = </span><span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">end</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="c1">#.replace(/\n (?:[^\*])/g, &quot;\n&quot;)</span>
                 <span class="k">if</span> <span class="nx">multiLine</span><span class="p">.</span><span class="nx">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">is</span> <span class="s">&quot;!&quot;</span> <span class="k">then</span> <span class="nv">multiLine = </span><span class="nx">multiLine</span><span class="p">.</span><span class="nx">slice</span> <span class="mi">1</span> <span class="c1"># remove our strict-mode comment marker</span>
-                <span class="nv">multiLine = </span><span class="s">&quot;/**</span><span class="si">#{</span><span class="nx">multiLine</span><span class="si">}</span><span class="s">*/&quot;</span><span class="p">.</span><span class="nx">split</span> <span class="s">&#39;\n&#39;</span>
-                <span class="nv">fixed = </span><span class="p">[]</span>
-                <span class="k">for</span> <span class="nx">line</span> <span class="k">in</span> <span class="nx">multiLine</span>
-                  <span class="nx">fixed</span><span class="p">.</span><span class="nx">push</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span> <span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s">&quot;^ {</span><span class="si">#{</span><span class="nx">numSpacesIndent</span><span class="si">}</span><span class="s">}&quot;</span><span class="p">),</span> <span class="s">&#39;&#39;</span>
+                <span class="nv">multiLine = </span><span class="s">&quot;/**</span><span class="si">#{</span><span class="nx">multiLine</span><span class="si">}</span><span class="s">*/&quot;</span>
+                                <span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="s">&#39;\n&#39;</span><span class="p">)</span>
+                                <span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="nf">(line) -&gt;</span> <span class="k">return</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s">&quot;^ {</span><span class="si">#{</span><span class="nx">numSpacesIndent</span><span class="si">}</span><span class="s">}&quot;</span><span class="p">),</span> <span class="s">&#39;&#39;</span><span class="p">))</span>
+                                <span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s">&#39;\n&#39;</span><span class="p">)</span>
 
-                <span class="nx">require</span><span class="p">(</span><span class="s">&#39;eyes&#39;</span><span class="p">).</span><span class="nx">inspect</span><span class="p">(</span><span class="nx">fixed</span><span class="p">)</span>
-                <span class="nv">multiLine = </span><span class="nx">fixed</span><span class="p">.</span><span class="nx">join</span> <span class="s">&#39;\n&#39;</span>
                 <span class="nv">doxData = </span><span class="nx">dox</span><span class="p">.</span><span class="nx">parseComments</span><span class="p">(</span><span class="nx">multiLine</span><span class="p">,</span> <span class="nv">raw: </span><span class="kc">yes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
                 
                 
                 <span class="c1"># Don&#39;t let dox do any markdown parsing. We&#39;ll do that all ourselves with md above</span>
                 <span class="nv">doxData.md = </span><span class="nx">md</span>
-                <span class="k">return</span> <span class="nx">@render</span> <span class="s">&quot;dox&quot;</span><span class="p">,</span> <span class="nx">doxData</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">rendered</span><span class="p">)</span> <span class="o">=&gt;</span>
+                <span class="k">return</span> <span class="nx">@render</span> <span class="s">&quot;dox&quot;</span><span class="p">,</span> <span class="nx">doxData</span><span class="p">,</span> <span class="nf">(err, rendered) =&gt;</span>
                   <span class="k">if</span> <span class="nx">err</span> <span class="k">then</span> <span class="k">throw</span> <span class="nx">err</span>
                   <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span> <span class="o">+=</span> <span class="nx">rendered</span>
                   <span class="nx">forEachCb</span><span class="p">()</span>
 
               <span class="k">catch</span> <span class="nx">e</span>
                 <span class="nx">console</span><span class="p">.</span><span class="nx">error</span> <span class="s">&quot;Dox error: &quot;</span> <span class="o">+</span> <span class="nx">e</span>
-                <span class="nx">multiLine</span> <span class="o">+=</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
-                <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span> <span class="o">+=</span> <span class="s">&quot;\n&quot;</span> <span class="o">+</span> <span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
+                <span class="nx">multiLine</span> <span class="o">+=</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">end</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
+                <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span> <span class="o">+=</span> <span class="s">&quot;\n&quot;</span> <span class="o">+</span> <span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
             <span class="k">else</span>
-              <span class="nx">multiLine</span> <span class="o">+=</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
-              <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span> <span class="o">+=</span> <span class="s">&quot;\n&quot;</span> <span class="o">+</span> <span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
+              <span class="nx">multiLine</span> <span class="o">+=</span> <span class="nx">line</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">end</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
+              <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span> <span class="o">+=</span> <span class="s">&quot;\n&quot;</span> <span class="o">+</span> <span class="nx">multiLine</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
             <span class="nv">multiLine = </span><span class="s">&quot;&quot;</span>
           <span class="k">else</span>
             <span class="nx">multiLine</span> <span class="o">+=</span> <span class="nx">line</span> <span class="o">+</span> <span class="s">&quot;\n&quot;</span>
@@ -485,7 +489,7 @@ A section is defined to be one block of code with an accompanying comment</p>
         <span class="c1"># ```js</span>
         <span class="c1">#  alert(&#39;foo&#39;); // Alert some foo /* Random open comment thing</span>
         <span class="c1"># ```</span>
-        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">@tolerant</span> <span class="o">is</span> <span class="kc">yes</span> <span class="o">or</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\s*/</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">is</span> <span class="s">&quot;!&quot;</span><span class="p">)</span> <span class="o">and</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">and</span> <span class="o">not</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">match</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">and</span> <span class="o">not</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">].</span><span class="nx">match</span><span class="p">(</span><span class="nx">commentRegex</span><span class="p">)</span>
+        <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">@tolerant</span> <span class="o">is</span> <span class="kc">yes</span> <span class="o">or</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\s*/</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">charAt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">is</span> <span class="s">&quot;!&quot;</span><span class="p">)</span> <span class="o">and</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">)</span> <span class="o">and</span> <span class="o">not</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">match</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">end</span><span class="p">)</span> <span class="o">and</span> <span class="o">not</span> <span class="nx">matchable</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">)[</span><span class="mi">0</span><span class="p">].</span><span class="nx">match</span><span class="p">(</span><span class="nx">commentRegex</span><span class="p">)</span>
           <span class="c1"># Here we start parsing a multiline comment. Store away the current section and start a new one</span>
           <span class="k">if</span> <span class="nx">section</span><span class="p">.</span><span class="nx">code</span>
             <span class="k">if</span> <span class="o">not</span> <span class="nx">section</span><span class="p">.</span><span class="nx">code</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\s*$/</span><span class="p">)</span> <span class="o">or</span> <span class="o">not</span> <span class="nx">section</span><span class="p">.</span><span class="nx">docs</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/^\s*$/</span><span class="p">)</span>
@@ -495,7 +499,7 @@ A section is defined to be one block of code with an accompanying comment</p>
               <span class="nv">docs: </span><span class="s">&quot;&quot;</span>
               <span class="nv">code: </span><span class="s">&quot;&quot;</span>
 
-          <span class="nv">match = </span><span class="nx">matchable</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">params</span><span class="p">.</span><span class="nx">multiLine</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+          <span class="nv">match = </span><span class="nx">matchable</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="nx">multilineDelims</span><span class="p">.</span><span class="nx">start</span><span class="p">)</span>
           <span class="k">if</span> <span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
             <span class="nv">numSpacesIndent = </span><span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nx">length</span>
           <span class="nv">inMultiLineComment = </span><span class="kc">true</span>
@@ -529,7 +533,7 @@ A section is defined to be one block of code with an accompanying comment</p>
     languageParams
   </h2>
 </div>
-</div><div class="body"><p>Provides language-specific params for a given file name.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">The name of the file to test</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filedata</code> &mdash; <span class="description">The contents of the file (to check for shebang)</span></div><div class="dox_tag_title">Return</div><div class="dox_tag_detail"><span class="dox_type">object</span> &mdash; <span class="description">Object containing all of the language-specific params</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">languageParams: </span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="nx">filedata</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Provides language-specific params for a given file name.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">The name of the file to test</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filedata</code> &mdash; <span class="description">The contents of the file (to check for shebang)</span></div><div class="dox_tag_title">Return</div><div class="dox_tag_detail"><span class="dox_type">object</span> &mdash; <span class="description">Object containing all of the language-specific params</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">languageParams: </span><span class="nf">(filename, filedata) =&gt;</span>
     
     <span class="c1"># First try to detect the language from the file extension</span>
     <span class="nv">ext = </span><span class="nx">path</span><span class="p">.</span><span class="nx">extname</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span>
@@ -539,7 +543,7 @@ A section is defined to be one block of code with an accompanying comment</p>
     <span class="k">return</span> <span class="s">&quot;cpp&quot;</span>  <span class="k">if</span> <span class="nx">ext</span> <span class="o">is</span> <span class="s">&quot;.C&quot;</span>
     <span class="nv">ext = </span><span class="nx">ext</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">()</span>
     <span class="k">for</span> <span class="nx">i</span> <span class="k">of</span> <span class="nx">@languages</span>
-      <span class="k">continue</span>  <span class="nx">unless</span> <span class="nx">@languages</span><span class="p">.</span><span class="nx">hasOwnProperty</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+      <span class="k">continue</span>  <span class="k">unless</span> <span class="nx">@languages</span><span class="p">.</span><span class="nx">hasOwnProperty</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
       <span class="k">return</span> <span class="nx">i</span>  <span class="k">if</span> <span class="nx">@languages</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">extensions</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">ext</span><span class="p">)</span> <span class="o">isnt</span> <span class="o">-</span><span class="mi">1</span>
     
     <span class="c1"># If that doesn&#39;t work, see if we can grab a shebang</span>
@@ -547,7 +551,7 @@ A section is defined to be one block of code with an accompanying comment</p>
     <span class="nv">match = </span><span class="nx">shebangRegex</span><span class="p">.</span><span class="nx">exec</span><span class="p">(</span><span class="nx">filedata</span><span class="p">)</span>
     <span class="k">if</span> <span class="nx">match</span>
       <span class="k">for</span> <span class="nx">j</span> <span class="k">of</span> <span class="nx">@languages</span>
-        <span class="k">continue</span>  <span class="nx">unless</span> <span class="nx">@languages</span><span class="p">.</span><span class="nx">hasOwnProperty</span><span class="p">(</span><span class="nx">j</span><span class="p">)</span>
+        <span class="k">continue</span>  <span class="k">unless</span> <span class="nx">@languages</span><span class="p">.</span><span class="nx">hasOwnProperty</span><span class="p">(</span><span class="nx">j</span><span class="p">)</span>
         <span class="k">return</span> <span class="nx">j</span>  <span class="k">if</span> <span class="nx">@languages</span><span class="p">[</span><span class="nx">j</span><span class="p">].</span><span class="nx">executables</span> <span class="o">and</span> <span class="nx">@languages</span><span class="p">[</span><span class="nx">j</span><span class="p">].</span><span class="nx">executables</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="nx">match</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">isnt</span> <span class="o">-</span><span class="mi">1</span>
     
     <span class="c1"># If we still can&#39;t figure it out, give up and return false.</span>
@@ -658,7 +662,7 @@ A section is defined to be one block of code with an accompanying comment</p>
     pygments
   </h2>
 </div>
-</div><div class="body"><p>Runs a given block of code through pygments</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">data</code> &mdash; <span class="description">The code to give to Pygments</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">The name of the Pygments lexer to use</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback to fire with Pygments output</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">pygments: </span><span class="p">(</span><span class="nx">data</span><span class="p">,</span> <span class="nx">language</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Runs a given block of code through pygments</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">data</code> &mdash; <span class="description">The code to give to Pygments</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">The name of the Pygments lexer to use</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback to fire with Pygments output</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">pygments: </span><span class="nf">(data, language, cb) =&gt;</span>
     
     <span class="c1"># By default tell Pygments to guess the language, and if</span>
     <span class="c1"># we have a language specified then tell pygments to use that lexer</span>
@@ -670,17 +674,17 @@ A section is defined to be one block of code with an accompanying comment</p>
     
     <span class="c1"># Hook up errors, for either when pygments itself throws an error,</span>
     <span class="c1"># or for when we&#39;re unable to send the code to pygments for some reason</span>
-    <span class="nx">pyg</span><span class="p">.</span><span class="nx">stderr</span><span class="p">.</span><span class="kc">on</span> <span class="s">&quot;data&quot;</span><span class="p">,</span> <span class="nf">(err) -&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">error</span> <span class="nx">err</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span>
+    <span class="nx">pyg</span><span class="p">.</span><span class="nx">stderr</span><span class="p">.</span><span class="nx">on</span> <span class="s">&quot;data&quot;</span><span class="p">,</span> <span class="nf">(err) -&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">error</span> <span class="nx">err</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span>
 
-    <span class="nx">pyg</span><span class="p">.</span><span class="nx">stdin</span><span class="p">.</span><span class="kc">on</span> <span class="s">&quot;error&quot;</span><span class="p">,</span> <span class="nf">(err) -&gt;</span>
+    <span class="nx">pyg</span><span class="p">.</span><span class="nx">stdin</span><span class="p">.</span><span class="nx">on</span> <span class="s">&quot;error&quot;</span><span class="p">,</span> <span class="nf">(err) -&gt;</span>
       <span class="nx">console</span><span class="p">.</span><span class="nx">error</span> <span class="s">&quot;Unable to write to Pygments stdin: &quot;</span><span class="p">,</span> <span class="nx">err</span>
       <span class="nx">process</span><span class="p">.</span><span class="nx">exit</span> <span class="mi">1</span>
 
     <span class="nv">out = </span><span class="s">&quot;&quot;</span>
-    <span class="nx">pyg</span><span class="p">.</span><span class="nx">stdout</span><span class="p">.</span><span class="kc">on</span> <span class="s">&quot;data&quot;</span><span class="p">,</span> <span class="nf">(data) -&gt;</span> <span class="nx">out</span> <span class="o">+=</span> <span class="nx">data</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span>
+    <span class="nx">pyg</span><span class="p">.</span><span class="nx">stdout</span><span class="p">.</span><span class="nx">on</span> <span class="s">&quot;data&quot;</span><span class="p">,</span> <span class="nf">(data) -&gt;</span> <span class="nx">out</span> <span class="o">+=</span> <span class="nx">data</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span>
 
     <span class="c1"># When pygments is done, fire the callback with our output</span>
-    <span class="nx">pyg</span><span class="p">.</span><span class="kc">on</span> <span class="s">&quot;exit&quot;</span><span class="p">,</span> <span class="o">-&gt;</span> <span class="nx">cb</span> <span class="nx">out</span>
+    <span class="nx">pyg</span><span class="p">.</span><span class="nx">on</span> <span class="s">&quot;exit&quot;</span><span class="p">,</span> <span class="nf">-&gt;</span> <span class="nx">cb</span> <span class="nx">out</span>
 
     <span class="c1"># Feed pygments with the code</span>
     <span class="k">if</span> <span class="nx">pyg</span><span class="p">.</span><span class="nx">stdin</span><span class="p">.</span><span class="nx">writable</span>
@@ -695,7 +699,7 @@ A section is defined to be one block of code with an accompanying comment</p>
 </div><div class="body"><p>Highlights all the sections of a file using <strong>pygments</strong>
 Given an array of section objects, loop through them, and for each
 section generate pretty html for the comments and the code, and put them in
-<code>docHtml</code> and <code>codeHtml</code> respectively</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Array of section objects</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">Language ith which to highlight the file</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">highlight: </span><span class="p">(</span><span class="nx">sections</span><span class="p">,</span> <span class="nx">language</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+<code>docHtml</code> and <code>codeHtml</code> respectively</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Array of section objects</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">language</code> &mdash; <span class="description">Language ith which to highlight the file</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">highlight: </span><span class="nf">(sections, language, cb) =&gt;</span>
     <span class="nv">params = </span><span class="nx">@languages</span><span class="p">[</span><span class="nx">language</span><span class="p">]</span>
     <span class="nv">input = </span><span class="p">[]</span>
     <span class="nv">i = </span><span class="mi">0</span>
@@ -706,7 +710,7 @@ section generate pretty html for the comments and the code, and put them in
     <span class="nv">input = </span><span class="nx">input</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s">&quot;\n&quot;</span> <span class="o">+</span> <span class="nx">params</span><span class="p">.</span><span class="nx">comment</span> <span class="o">+</span> <span class="s">&quot;----{DIVIDER_THING}----\n&quot;</span><span class="p">)</span>
     
     <span class="c1"># Run our input through pygments, then split the output back up into its constituent sections</span>
-    <span class="nx">@pygments</span> <span class="nx">input</span><span class="p">,</span> <span class="nx">language</span><span class="p">,</span> <span class="p">(</span><span class="nx">out</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nx">@pygments</span> <span class="nx">input</span><span class="p">,</span> <span class="nx">language</span><span class="p">,</span> <span class="nf">(out) =&gt;</span>
       <span class="nv">out = </span><span class="nx">out</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^\s*&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;/</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/&lt;\/pre&gt;&lt;\/div&gt;\s*$/</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
       <span class="nv">bits = </span><span class="nx">out</span><span class="p">.</span><span class="nx">split</span><span class="p">(</span><span class="k">new</span> <span class="nb">RegExp</span><span class="p">(</span><span class="s">&quot;\\n*&lt;span class=\&quot;c[1p]?\&quot;&gt;&quot;</span> <span class="o">+</span> <span class="nx">params</span><span class="p">.</span><span class="nx">comment</span> <span class="o">+</span> <span class="s">&quot;----\\{DIVIDER_THING\\}----&lt;\\/span&gt;\\n*&quot;</span><span class="p">))</span>
       <span class="nv">i = </span><span class="mi">0</span>
@@ -723,11 +727,11 @@ section generate pretty html for the comments and the code, and put them in
   </h2>
 </div>
 </div><div class="body"><p>Goes through all the HTML generated from comments, finds any code blocks
-and highlights them</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Sections array as above</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback to fire when done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">processDocCodeBlocks: </span><span class="p">(</span><span class="nx">sections</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+and highlights them</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Sections array as above</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback to fire when done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">processDocCodeBlocks: </span><span class="nf">(sections, cb) =&gt;</span>
     <span class="nv">self = </span><span class="k">this</span>
     <span class="nv">i = </span><span class="mi">0</span>
 
-    <span class="nv">next = </span><span class="o">-&gt;</span>
+    <span class="nv">next = </span><span class="nf">-&gt;</span>
       <span class="c1"># If we&#39;ve reached the end of the sections array, we&#39;ve highlighted everything,</span>
       <span class="c1"># so we can stop and fire the callback</span>
       <span class="k">if</span> <span class="nx">i</span> <span class="o">is</span> <span class="nx">sections</span><span class="p">.</span><span class="nx">length</span>
@@ -750,7 +754,7 @@ and highlights them</p></div><div class="details"><div class="dox_tag_title">Par
     extractDocCode
   </h2>
 </div>
-</div><div class="body"><p>Extract and highlight code blocks in formatted HTML output from showdown</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">html</code> &mdash; <span class="description">The HTML to process</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">extractDocCode: </span><span class="p">(</span><span class="nx">html</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Extract and highlight code blocks in formatted HTML output from showdown</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">html</code> &mdash; <span class="description">The HTML to process</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">extractDocCode: </span><span class="nf">(html, cb) =&gt;</span>
     
     <span class="c1"># We&#39;ll store all extracted code blocks, along with information, in this array</span>
     <span class="nv">codeBlocks = </span><span class="p">[]</span>
@@ -772,7 +776,7 @@ and highlights them</p></div><div class="details"><div class="dox_tag_title">Par
     <span class="p">)</span>
     
     <span class="c1"># Once we&#39;re done with that, now we can move on to highlighting the code we&#39;ve extracted</span>
-    <span class="k">return</span> <span class="nx">@highlighExtractedCode</span><span class="p">(</span><span class="nx">html</span><span class="p">,</span> <span class="nx">codeBlocks</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
+    <span class="k">return</span> <span class="nx">@highlightExtractedCode</span><span class="p">(</span><span class="nx">html</span><span class="p">,</span> <span class="nx">codeBlocks</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
 <div class="pilwrap" id="highlightextractedcode">
   <h2>
     <a href="#highlightextractedcode" class="pilcrow">&#182;</a>
@@ -783,10 +787,10 @@ and highlights them</p></div><div class="details"><div class="dox_tag_title">Par
 for code highlighting. Unfortunately the only way to do this that's able
 to cater for all situations is to spawn a new pygments process for each
 code block (as different blocks might be in different languages). If anyone
-knows of a more efficient way of doing this, please let me know.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">html</code> &mdash; <span class="description">The HTML the code has been extracted from</span></div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">codeBlocks</code> &mdash; <span class="description">Array of extracted code blocks as above</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback to fire when we're done with processed HTML</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">highlighExtractedCode: </span><span class="p">(</span><span class="nx">html</span><span class="p">,</span> <span class="nx">codeBlocks</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+knows of a more efficient way of doing this, please let me know.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">html</code> &mdash; <span class="description">The HTML the code has been extracted from</span></div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">codeBlocks</code> &mdash; <span class="description">Array of extracted code blocks as above</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback to fire when we're done with processed HTML</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">highlightExtractedCode: </span><span class="nf">(html, codeBlocks, cb) =&gt;</span>
     <span class="nv">self = </span><span class="k">this</span>
 
-    <span class="nv">next = </span><span class="o">-&gt;</span>
+    <span class="nv">next = </span><span class="nf">-&gt;</span>
       
       <span class="c1"># If we&#39;re done, then stop and fire the callback</span>
       <span class="k">if</span> <span class="nx">codeBlocks</span><span class="p">.</span><span class="nx">length</span> <span class="o">is</span> <span class="mi">0</span>
@@ -810,7 +814,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
     addAnchors
   </h2>
 </div>
-</div><div class="body"><p>Automatically assign an id to each section based on any headings.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">object</span><code class="name">section</code> &mdash; <span class="description">The section object to look at</span></div><div class="dox_tag_detail"><span class="dox_type">number</span><code class="name">idx</code> &mdash; <span class="description">The index of the section in the whole array.</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">addAnchors: </span><span class="p">(</span><span class="nx">docHtml</span><span class="p">,</span> <span class="nx">idx</span><span class="p">,</span> <span class="nx">headings</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Automatically assign an id to each section based on any headings.</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">object</span><code class="name">section</code> &mdash; <span class="description">The section object to look at</span></div><div class="dox_tag_detail"><span class="dox_type">number</span><code class="name">idx</code> &mdash; <span class="description">The index of the section in the whole array.</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">addAnchors: </span><span class="nf">(docHtml, idx, headings) =&gt;</span>
     <span class="k">if</span> <span class="nx">docHtml</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/&lt;h[0-9]&gt;/</span><span class="p">)</span>
       
       <span class="c1"># If there is a heading tag, pick out the first one (likely the most important), sanitize</span>
@@ -834,7 +838,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
     renderCodeHtml
   </h2>
 </div>
-</div><div class="body"><p>Given an array of sections, render them all out to a nice HTML file</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Array of sections containing parsed data</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of the file being processed</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">renderCodeHtml: </span><span class="p">(</span><span class="nx">sections</span><span class="p">,</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Given an array of sections, render them all out to a nice HTML file</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">Array</span><code class="name">sections</code> &mdash; <span class="description">Array of sections containing parsed data</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of the file being processed</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">renderCodeHtml: </span><span class="nf">(sections, filename, cb) =&gt;</span>
     
     <span class="nv">self = </span><span class="k">this</span>
 
@@ -856,7 +860,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
       <span class="nv">section.docHtml = </span><span class="nx">@addAnchors</span><span class="p">(</span><span class="nx">section</span><span class="p">.</span><span class="nx">docHtml</span><span class="p">,</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">headings</span><span class="p">)</span>
       <span class="nx">i</span><span class="o">++</span>
     
-    <span class="nx">@render</span> <span class="s">&quot;code&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="nv">title: </span><span class="nx">path</span><span class="p">.</span><span class="nx">basename</span><span class="p">(</span><span class="nx">filename</span><span class="p">),</span> <span class="nv">sections: </span><span class="nx">sections</span> <span class="p">},</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">renderedCode</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nx">@render</span> <span class="s">&quot;code&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="nv">title: </span><span class="nx">path</span><span class="p">.</span><span class="nx">basename</span><span class="p">(</span><span class="nx">filename</span><span class="p">),</span> <span class="nv">sections: </span><span class="nx">sections</span> <span class="p">},</span> <span class="nf">(err, renderedCode) =&gt;</span>
       <span class="k">if</span> <span class="nx">err</span> <span class="k">then</span> <span class="k">throw</span> <span class="nx">err</span>
 
       <span class="nv">locals = </span><span class="p">{</span>
@@ -869,7 +873,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
         <span class="nv">filename: </span><span class="nx">filename</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">@inDir</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\/\\]/</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
       <span class="p">}</span>
 
-      <span class="nx">@render</span> <span class="s">&quot;tmpl&quot;</span><span class="p">,</span> <span class="nx">locals</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">rendered</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="nx">@render</span> <span class="s">&quot;tmpl&quot;</span><span class="p">,</span> <span class="nx">locals</span><span class="p">,</span> <span class="nf">(err, rendered) =&gt;</span>
         <span class="k">if</span> <span class="nx">err</span> <span class="k">then</span> <span class="k">throw</span> <span class="nx">err</span>
         <span class="nx">@writeFile</span> <span class="nx">outFile</span><span class="p">,</span> <span class="nx">rendered</span><span class="p">,</span> <span class="s">&quot;Generated: </span><span class="si">#{</span><span class="nx">outFile</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">@outDir</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s">&quot;</span><span class="p">,</span> <span class="nx">cb</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
 <div class="pilwrap" id="rendermarkdownhtml">
@@ -878,7 +882,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
     renderMarkdownHtml
   </h2>
 </div>
-</div><div class="body"><p>Renders the output for a Markdown file into HTML</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">content</code> &mdash; <span class="description">The markdown file content</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of the file being processed</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">renderMarkdownHtml: </span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+</div><div class="body"><p>Renders the output for a Markdown file into HTML</p></div><div class="details"><div class="dox_tag_title">Params</div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">content</code> &mdash; <span class="description">The markdown file content</span></div><div class="dox_tag_detail"><span class="dox_type">string</span><code class="name">filename</code> &mdash; <span class="description">Name of the file being processed</span></div><div class="dox_tag_detail"><span class="dox_type">function</span><code class="name">cb</code> &mdash; <span class="description">Callback function to fire when we're done</span></div></div></div></td><td class="code highlight"><div class="highlight"><pre>  <span class="nv">renderMarkdownHtml: </span><span class="nf">(content, filename, cb) =&gt;</span>
 
     <span class="c1"># Run the markdown through *showdown*</span>
     <span class="nv">content = </span><span class="nx">@_renderMarkdown</span> <span class="nx">content</span>
@@ -897,7 +901,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
     
     <span class="c1"># Recursively create the output directory, clean out any old version of the</span>
     <span class="c1"># output file, then save our new file.</span>
-    <span class="nx">@extractDocCode</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="p">(</span><span class="nx">content</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nx">@extractDocCode</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="nf">(content) =&gt;</span>
       <span class="nv">headings = </span><span class="p">[]</span>
       <span class="nv">content = </span><span class="s">&quot;&lt;div class=\&quot;docs markdown\&quot;&gt;</span><span class="si">#{</span> <span class="nx">@addAnchors</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">headings</span><span class="p">)</span> <span class="si">}</span><span class="s">&lt;/div&gt;&quot;</span>
       <span class="nv">outFile = </span><span class="nx">@outFile</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span>
@@ -917,7 +921,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
         <span class="nv">filename: </span><span class="nx">filename</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">@inDir</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">).</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/^[\\\/]/</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">)</span>
       <span class="p">}</span>
 
-      <span class="nx">@render</span> <span class="s">&quot;tmpl&quot;</span><span class="p">,</span> <span class="nx">locals</span><span class="p">,</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">rendered</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="nx">@render</span> <span class="s">&quot;tmpl&quot;</span><span class="p">,</span> <span class="nx">locals</span><span class="p">,</span> <span class="nf">(err, rendered) =&gt;</span>
         <span class="nx">@writeFile</span> <span class="nx">outFile</span><span class="p">,</span> <span class="nx">rendered</span><span class="p">,</span> <span class="s">&quot;Generated: &quot;</span> <span class="o">+</span> <span class="nx">outFile</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">@outDir</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">),</span> <span class="nx">cb</span>
 
     <span class="p">)</span> <span class="c1">#.bind(this)</span></pre></div></td></tr><tr><td class="docs"><div class="dox"><div class="summary">
@@ -936,43 +940,43 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
     <span class="nv">outPath_CSS           = </span><span class="nx">path</span><span class="p">.</span><span class="nx">join</span> <span class="nx">@outDir</span><span class="p">,</span> <span class="s">&quot;doc-style.css&quot;</span>
     <span class="nv">outPath_indexHTML     = </span><span class="nx">path</span><span class="p">.</span><span class="nx">join</span> <span class="nx">@outDir</span><span class="p">,</span> <span class="s">&quot;index.html&quot;</span>
 
-    <span class="nv">log = </span><span class="p">(</span><span class="nx">msg</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+    <span class="nv">log = </span><span class="nf">(msg, cb) =&gt;</span>
       <span class="nx">console</span><span class="p">.</span><span class="nx">log</span> <span class="nx">msg</span>
       <span class="nx">cb</span> <span class="kc">null</span>
 
     <span class="nv">async = </span><span class="nx">require</span> <span class="s">&quot;async&quot;</span>
     <span class="nx">async</span><span class="p">.</span><span class="nx">auto</span> <span class="p">{</span>
-      <span class="nv">readScriptJS: </span>      <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span> <span class="nx">inPath_scriptJS</span><span class="p">,</span> <span class="nx">cb</span>
-      <span class="nv">readColorschemeCSS: </span><span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span> <span class="nx">inPath_colorSchemeCSS</span><span class="p">,</span> <span class="nx">cb</span>
-      <span class="nv">genPygmentsCSS: </span>    <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">exec</span> <span class="s">&quot;pygmentize -S </span><span class="si">#{</span><span class="nx">@colourScheme</span><span class="si">}</span><span class="s"> -f html -a &#39;body .highlight&#39;&quot;</span><span class="p">,</span> <span class="p">(</span><span class="nx">code</span><span class="p">,</span> <span class="nx">stdout</span><span class="p">,</span> <span class="nx">stderr</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="nx">stderr</span><span class="p">,</span> <span class="nx">stdout</span>
-      <span class="nv">readUserCSS: </span>       <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">async</span><span class="p">.</span><span class="nx">map</span> <span class="nx">@css</span><span class="p">,</span> <span class="p">((</span><span class="nx">file</span><span class="p">,</span> <span class="nx">mapCb</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">file</span><span class="p">),</span> <span class="nx">mapCb</span><span class="p">)),</span> <span class="nx">cb</span>
+      <span class="nv">readScriptJS: </span>      <span class="nf">(cb, results) =&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span> <span class="nx">inPath_scriptJS</span><span class="p">,</span> <span class="nx">cb</span>
+      <span class="nv">readColorschemeCSS: </span><span class="nf">(cb, results) =&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span> <span class="nx">inPath_colorSchemeCSS</span><span class="p">,</span> <span class="nx">cb</span>
+      <span class="nv">genPygmentsCSS: </span>    <span class="nf">(cb, results) =&gt;</span> <span class="nx">exec</span> <span class="s">&quot;pygmentize -S </span><span class="si">#{</span><span class="nx">@colourScheme</span><span class="si">}</span><span class="s"> -f html -a &#39;body .highlight&#39;&quot;</span><span class="p">,</span> <span class="nf">(code, stdout, stderr) =&gt;</span> <span class="nx">cb</span> <span class="nx">stderr</span><span class="p">,</span> <span class="nx">stdout</span>
+      <span class="nv">readUserCSS: </span>       <span class="nf">(cb, results) =&gt;</span> <span class="nx">async</span><span class="p">.</span><span class="nx">map</span> <span class="nx">@css</span><span class="p">,</span> <span class="p">(</span><span class="nf">(file, mapCb) =&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFile</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">file</span><span class="p">),</span> <span class="nx">mapCb</span><span class="p">)),</span> <span class="nx">cb</span>
 
-      <span class="nv">renderIndexPage: </span>    <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">if</span> <span class="nx">@index</span><span class="o">?</span> <span class="k">then</span> <span class="nx">@render</span><span class="p">(</span><span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="nv">destination: </span><span class="nx">@index</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="p">},</span> <span class="nx">cb</span><span class="p">)</span> <span class="k">else</span> <span class="nx">cb</span> <span class="kc">null</span>
+      <span class="nv">renderIndexPage: </span>    <span class="nf">(cb, results) =&gt;</span> <span class="k">if</span> <span class="nx">@index</span><span class="o">?</span> <span class="k">then</span> <span class="nx">@render</span><span class="p">(</span><span class="s">&quot;index.html&quot;</span><span class="p">,</span> <span class="p">{</span> <span class="nv">destination: </span><span class="nx">@index</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="p">},</span> <span class="nx">cb</span><span class="p">)</span> <span class="k">else</span> <span class="nx">cb</span> <span class="kc">null</span>
 
       <span class="nv">writeIndexPage: </span>    <span class="p">[</span> <span class="s">&quot;renderIndexPage&quot;</span>
-        <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="k">if</span> <span class="nx">@index</span><span class="o">?</span> <span class="k">then</span> <span class="nx">@writeFileIfDifferent</span><span class="p">(</span><span class="nx">outPath_indexHTML</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">renderIndexPage</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="k">else</span> <span class="nx">cb</span> <span class="kc">null</span> <span class="p">]</span>
+        <span class="nf">(cb, results) =&gt;</span> <span class="k">if</span> <span class="nx">@index</span><span class="o">?</span> <span class="k">then</span> <span class="nx">@writeFileIfDifferent</span><span class="p">(</span><span class="nx">outPath_indexHTML</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">renderIndexPage</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="k">else</span> <span class="nx">cb</span> <span class="kc">null</span> <span class="p">]</span>
 
-      <span class="nv">writeFilelistJS: </span>   <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span>
+      <span class="nv">writeFilelistJS: </span>   <span class="nf">(cb, results) =&gt;</span>
         <span class="nx">@writeFileIfDifferent</span> <span class="nx">outPath_filelistJS</span><span class="p">,</span> <span class="s">&quot;var tree=</span><span class="si">#{</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span> <span class="nx">@tree</span> <span class="si">}</span><span class="s">;&quot;</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">log</span> <span class="s">&quot;Saved file tree to doc-filelist.js&quot;</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="kc">null</span>
 
       <span class="nv">writeScriptJS: </span>     <span class="p">[</span> <span class="s">&quot;readScriptJS&quot;</span><span class="p">,</span>
-        <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">@writeFileIfDifferent</span> <span class="nx">outPath_docScriptJS</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">readScriptJS</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">log</span> <span class="s">&quot;Copied JS to doc-script.js&quot;</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="kc">null</span> <span class="p">]</span>
+        <span class="nf">(cb, results) =&gt;</span> <span class="nx">@writeFileIfDifferent</span> <span class="nx">outPath_docScriptJS</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">readScriptJS</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">log</span> <span class="s">&quot;Copied JS to doc-script.js&quot;</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="kc">null</span> <span class="p">]</span>
 
       <span class="nv">concatCSS: </span>         <span class="p">[</span> <span class="s">&quot;readColorschemeCSS&quot;</span><span class="p">,</span> <span class="s">&quot;genPygmentsCSS&quot;</span><span class="p">,</span> <span class="s">&quot;readUserCSS&quot;</span><span class="p">,</span>
-        <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">readColorschemeCSS</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="o">+</span> <span class="nx">results</span><span class="p">.</span><span class="nx">genPygmentsCSS</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="o">+</span> <span class="nx">results</span><span class="p">.</span><span class="nx">readUserCSS</span><span class="p">.</span><span class="nx">join</span> <span class="s">&quot;\n&quot;</span> <span class="p">]</span>
+        <span class="nf">(cb, results) =&gt;</span> <span class="nx">cb</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">readColorschemeCSS</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="o">+</span> <span class="nx">results</span><span class="p">.</span><span class="nx">genPygmentsCSS</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="o">+</span> <span class="nx">results</span><span class="p">.</span><span class="nx">readUserCSS</span><span class="p">.</span><span class="nx">join</span> <span class="s">&quot;\n&quot;</span> <span class="p">]</span>
 
       <span class="nv">writeAllCSS: </span>       <span class="p">[</span> <span class="s">&quot;concatCSS&quot;</span>
-        <span class="p">(</span><span class="nx">cb</span><span class="p">,</span> <span class="nx">results</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">@writeFileIfDifferent</span> <span class="nx">outPath_CSS</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">concatCSS</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">log</span> <span class="s">&quot;Copied all CSS to doc-style.css&quot;</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="kc">null</span> <span class="p">]</span>
+        <span class="nf">(cb, results) =&gt;</span> <span class="nx">@writeFileIfDifferent</span> <span class="nx">outPath_CSS</span><span class="p">,</span> <span class="nx">results</span><span class="p">.</span><span class="nx">concatCSS</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">log</span> <span class="s">&quot;Copied all CSS to doc-style.css&quot;</span><span class="p">,</span> <span class="o">=&gt;</span> <span class="nx">cb</span> <span class="kc">null</span> <span class="p">]</span>
 
 
     <span class="p">},</span> <span class="nx">@finished</span>
 
 
-  <span class="nv">outFile: </span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span> <span class="o">=&gt;</span>
+  <span class="nv">outFile: </span><span class="nf">(filename) =&gt;</span>
     <span class="nx">path</span><span class="p">.</span><span class="nx">normalize</span> <span class="nx">filename</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">@inDir</span><span class="p">),</span> <span class="nx">@outDir</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;.html&quot;</span>
 
 
-  <span class="nv">render: </span><span class="p">(</span><span class="nx">tplName</span><span class="p">,</span> <span class="nx">locals</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span> <span class="o">=&gt;</span>
+  <span class="nv">render: </span><span class="nf">(tplName, locals, cb) =&gt;</span>
     <span class="nv">templatePath = </span><span class="nx">path</span><span class="p">.</span><span class="nx">join</span> <span class="nx">@tplDir</span><span class="p">,</span> <span class="s">&quot;</span><span class="si">#{</span><span class="nx">tplName</span><span class="si">}</span><span class="s">.</span><span class="si">#{</span><span class="nx">@tplExtension</span><span class="si">}</span><span class="s">&quot;</span>
 
     <span class="k">if</span> <span class="nx">@tplEngine</span> <span class="o">is</span> <span class="s">&quot;internal&quot;</span>
@@ -983,7 +987,7 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
       <span class="nx">consolidate</span><span class="p">[</span> <span class="nx">@tplEngine</span> <span class="p">](</span><span class="nx">templatePath</span><span class="p">,</span> <span class="nx">locals</span><span class="p">,</span> <span class="nx">cb</span><span class="p">)</span>
 
 
-  <span class="nv">compileTemplate: </span><span class="p">(</span><span class="nx">str</span><span class="p">)</span> <span class="o">=&gt;</span>
+  <span class="nv">compileTemplate: </span><span class="nf">(str) =&gt;</span>
     <span class="k">new</span> <span class="nb">Function</span><span class="p">(</span><span class="s">&quot;obj&quot;</span><span class="p">,</span>
                  <span class="s">&quot;var p=[],print=function(){p.push.apply(p,arguments);};&quot;</span> <span class="o">+</span>
                  <span class="s">&quot;with(obj){p.push(&#39;&quot;</span> <span class="o">+</span>
@@ -992,9 +996,9 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
 
   <span class="nv">writeFile: </span><span class="nf">(filename, fileContent, doneLog, doneCallback) -&gt;</span>
     <span class="nv">outDir = </span><span class="nx">path</span><span class="p">.</span><span class="nx">dirname</span> <span class="nx">filename</span>
-    <span class="nx">mkdirp</span> <span class="nx">outDir</span><span class="p">,</span> <span class="nf">() -&gt;</span>
-      <span class="nx">fs</span><span class="p">.</span><span class="nx">unlink</span> <span class="nx">filename</span><span class="p">,</span> <span class="nf">() -&gt;</span>
-        <span class="nx">fs</span><span class="p">.</span><span class="nx">writeFile</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">fileContent</span><span class="p">,</span> <span class="nf">() -&gt;</span>
+    <span class="nx">mkdirp</span> <span class="nx">outDir</span><span class="p">,</span> <span class="p">()</span> <span class="nf">-&gt;</span>
+      <span class="nx">fs</span><span class="p">.</span><span class="nx">unlink</span> <span class="nx">filename</span><span class="p">,</span> <span class="p">()</span> <span class="nf">-&gt;</span>
+        <span class="nx">fs</span><span class="p">.</span><span class="nx">writeFile</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">fileContent</span><span class="p">,</span> <span class="p">()</span> <span class="nf">-&gt;</span>
           <span class="k">if</span> <span class="nx">doneLog</span> <span class="k">then</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span> <span class="nx">doneLog</span>
           <span class="k">if</span> <span class="nx">doneCallback</span> <span class="k">then</span> <span class="nx">doneCallback</span><span class="p">()</span>
 
@@ -1005,5 +1009,5 @@ knows of a more efficient way of doing this, please let me know.</p></div><div c
       <span class="c1"># file exists and hasn&#39;t changed</span>
       <span class="k">if</span> <span class="o">not</span> <span class="nx">err</span> <span class="o">and</span> <span class="nx">content</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="o">is</span> <span class="nx">fileContent</span><span class="p">.</span><span class="nx">toString</span><span class="p">()</span> <span class="k">then</span> <span class="nx">callback</span><span class="o">?</span><span class="p">()</span>
       <span class="c1"># file has changed</span>
-      <span class="k">else</span> <span class="nx">mkdirp</span> <span class="nx">outDir</span><span class="p">,</span> <span class="o">-&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">unlink</span> <span class="nx">filename</span><span class="p">,</span> <span class="o">-&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">writeFile</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">fileContent</span><span class="p">,</span> <span class="nx">callback</span>
+      <span class="k">else</span> <span class="nx">mkdirp</span> <span class="nx">outDir</span><span class="p">,</span> <span class="nf">-&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">unlink</span> <span class="nx">filename</span><span class="p">,</span> <span class="nf">-&gt;</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">writeFile</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">fileContent</span><span class="p">,</span> <span class="nx">callback</span>
 </pre></div></td></tr></tbody></table></div></body></html>

@@ -1,1 +1,1 @@
-var tree={"dirs":{"res":{"files":["script.js","showdown.js"]},"scripts":{"files":["install.js","install.sh"]},"src":{"files":["otis-bin.coffee","otis.coffee"]},"build":{"dirs":{"bin":{"files":["otis"]},"lib":{"files":["otis.js"]},"res":{"files":["script.js","showdown.js"]}}}}};
+var tree={"dirs":{"lib":{"files":["otis.js"]},"res":{"files":["script.js","showdown.js"]},"scripts":{"files":["install.js","install.sh"]},"src":{"files":["otis-bin.coffee","otis.coffee"]}}};
