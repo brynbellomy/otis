@@ -53,6 +53,8 @@ class exports.Otis
   - `css`
   - `index`
   - `tolerant`
+  - `delimStart`
+  - `delimEnd`
   - `onlyUpdated`
   - `ignoreHidden`
   - `sidebarState`
@@ -70,7 +72,7 @@ class exports.Otis
 
 
   parseOpts: (opts) =>
-    defaults = {
+    defaults =
       inDir: path.resolve "."
       outDir: path.resolve "doc"
       tplDir: path.join path.resolve(__dirname), "res"
@@ -81,11 +83,12 @@ class exports.Otis
       css: []
       index: null
       tolerant: false
+      delimStart: null
+      delimEnd: null
       onlyUpdated: false
       ignoreHidden: false
       sidebarState: true
       exclude: false
-    }
 
     
     # Loop through and fix up any unspecified options with the defaults.
@@ -105,6 +108,8 @@ class exports.Otis
     @css            = opts.css
     @index          = opts.index
     @tolerant       = !!opts.tolerant
+    @delimStart     = (if opts.delimStart? then RegExp(opts.delimStart) else undefined)
+    @delimEnd       = (if opts.delimEnd?   then RegExp(opts.delimEnd)   else undefined)
     @ignoreHidden   = !!opts.ignoreHidden
     @sidebarState   = opts.sidebarState
     
@@ -434,10 +439,14 @@ class exports.Otis
     codeLines = data.split("\n")
     sections = []
     params = @languages[language]
-    section = {
+
+    multilineDelims =
+      start: @delimStart ? (params?.multiLine?[0] ? null)
+      end:   @delimEnd   ? (params?.multiLine?[1] ? null)
+
+    section =
       docs: ""
       code: ""
-    }
 
     inMultiLineComment = false
     numSpacesIndent = 0
@@ -446,21 +455,18 @@ class exports.Otis
     commentRegex = new RegExp("^\\s*" + params.comment + "\\s?")
     
     # Loop through all the lines, and parse into sections
-    # i = 0
-
     async = require "async"
     async.forEachSeries codeLines, (line, forEachCb) =>
-    # for line in codeLines
       
       # Only match against parts of the line that don't appear in strings
       matchable = line.replace(/(["'])(?:\\.|(?!\1).)*\1/g, "")
-      if params.multiLine
+      if multilineDelims.start? and multilineDelims.end?
         
         # If we are currently in a multiline comment, behave differently
         if inMultiLineComment
           
           # End-multiline comments should match regardless of whether they're 'quoted'
-          if line.match(params.multiLine[1])
+          if line.match(multilineDelims.end)
             
             # Once we have reached the end of the multiline, take the whole content
             # of the multiline comment, and pass it through **dox**, which will then
@@ -475,7 +481,7 @@ class exports.Otis
                 
                 # standardize the comment block delimiters to the only ones that
                 # dox seems to understand, namely, /* and */
-                multiLine = multiLine.replace(params.multiLine[0], "").replace(params.multiLine[1], "") #.replace(/\n (?:[^\*])/g, "\n")
+                multiLine = multiLine.replace(multilineDelims.start, "").replace(multilineDelims.end, "") #.replace(/\n (?:[^\*])/g, "\n")
                 if multiLine.charAt(0) is "!" then multiLine = multiLine.slice 1 # remove our strict-mode comment marker
                 multiLine = "/**#{multiLine}*/"
                                 .split('\n')
@@ -494,11 +500,11 @@ class exports.Otis
 
               catch e
                 console.error "Dox error: " + e
-                multiLine += line.replace(params.multiLine[1], "") + "\n"
-                section.docs += "\n" + multiLine.replace(params.multiLine[0], "") + "\n"
+                multiLine += line.replace(multilineDelims.end, "") + "\n"
+                section.docs += "\n" + multiLine.replace(multilineDelims.start, "") + "\n"
             else
-              multiLine += line.replace(params.multiLine[1], "") + "\n"
-              section.docs += "\n" + multiLine.replace(params.multiLine[0], "") + "\n"
+              multiLine += line.replace(multilineDelims.end, "") + "\n"
+              section.docs += "\n" + multiLine.replace(multilineDelims.start, "") + "\n"
             multiLine = ""
           else
             multiLine += line + "\n"
@@ -511,7 +517,7 @@ class exports.Otis
         # ```js
         #  alert('foo'); // Alert some foo /* Random open comment thing
         # ```
-        else if (@tolerant is yes or matchable.replace(/\s*/, "").replace(params.multiLine[0], "").charAt(0) is "!") and matchable.match(params.multiLine[0]) and not matchable.replace(params.multiLine[0], "").match(params.multiLine[1]) and not matchable.split(params.multiLine[0])[0].match(commentRegex)
+        else if (@tolerant is yes or matchable.replace(/\s*/, "").replace(multilineDelims.start, "").charAt(0) is "!") and matchable.match(multilineDelims.start) and not matchable.replace(multilineDelims.start, "").match(multilineDelims.end) and not matchable.split(multilineDelims.start)[0].match(commentRegex)
           # Here we start parsing a multiline comment. Store away the current section and start a new one
           if section.code
             if not section.code.match(/^\s*$/) or not section.docs.match(/^\s*$/)
@@ -521,7 +527,7 @@ class exports.Otis
               docs: ""
               code: ""
 
-          match = matchable.match(params.multiLine[0])
+          match = matchable.match(multilineDelims.start)
           if match[1]
             numSpacesIndent = match[1].length
           inMultiLineComment = true
@@ -821,7 +827,7 @@ class exports.Otis
     )
     
     # Once we're done with that, now we can move on to highlighting the code we've extracted
-    return @highlighExtractedCode(html, codeBlocks, cb)
+    return @highlightExtractedCode(html, codeBlocks, cb)
 
 
   ###!
@@ -837,7 +843,7 @@ class exports.Otis
   @param {Array} codeBlocks Array of extracted code blocks as above
   @param {function} cb Callback to fire when we're done with processed HTML
   ###
-  highlighExtractedCode: (html, codeBlocks, cb) =>
+  highlightExtractedCode: (html, codeBlocks, cb) =>
     self = this
 
     next = ->

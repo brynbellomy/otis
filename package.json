@@ -1,11 +1,11 @@
 {
   "name": "otis",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "author": "bryn austin bellomy <bryn.bellomy@gmail.com>",
   "license": "WTFPL",
   "dependencies": {
     "mkdirp": "0.3.x",
-    "dox": "git://github.com/brynbellomy/dox.git#ac292482c04df6211659e9545edcbfb98ff0fe63",
+    "dox": "git://github.com/brynbellomy/dox.git#otis-0.3.0",
     "optimist": "0.3.x",
     "watchr": "2.0.x",
     "consolidate": "0.4.x",
